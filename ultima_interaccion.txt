@@ -1,0 +1,312 @@
+### Reporte de Interacción: Módulo de Solicitudes
+
+
+  Objetivo General: Mejorar y completar la funcionalidad del módulo de gestión de solicitudes, haciéndolo
+  más robusto, funcional y amigable para el usuario.
+
+  A continuación se detallan los logros y cambios principales realizados:
+
+
+  1. Corrección de Visualización de Fechas:
+     Problema:* Las fechas de ingreso y salida aparecían en blanco en la tabla de solicitudes.
+     Solución:* Se realizó un diagnóstico exhaustivo que incluyó:
+      *   Corrección de inconsistencias de mayúsculas y minúsculas (camelCase vs PascalCase) entre el
+  frontend (TypeScript) y el backend (C#).
+      *   Ajuste del formato de fecha (pipe date) en la plantilla HTML.
+      *   Creación de un endpoint específico en el backend (GetSolicitudForEdit) para devolver los datos en
+  el formato requerido por el formulario de edición.
+      *   Implementación de una función en el frontend para formatear las fechas correctamente para los
+  campos datetime-local.
+
+
+  2. Implementación de Búsqueda y Filtros:
+     Problema:* La búsqueda general no funcionaba o no devolvía los resultados esperados.
+     Solución:*
+      *   Se modificó la consulta en el repositorio del backend (SolicitudRepositorio.cs) para realizar una
+  búsqueda tipo OR que busca el término introducido tanto en el nombre del visitante como en la placa del
+  vehículo.
+      *   Se corrigió la lógica de los filtros avanzados, especialmente la relacionada con los rangos de
+  fechas.
+
+
+  3. Validación Avanzada de Fechas en el Formulario:
+     Problema:* El usuario podía seleccionar una fecha de salida anterior o inválida con respecto a la fecha
+   de ingreso.
+     Solución:*
+      *   El campo "Fecha de Salida" ahora está deshabilitado hasta que se selecciona una "Fecha de
+  Ingreso".
+         Se implementó un validador personalizado en Angular para asegurar que la fecha de salida sea como
+  mínimo una hora posterior* a la de ingreso.
+      *   Se mejoró el manejo de errores para que, en lugar de fallar y borrar el formulario, se muestre un
+  mensaje de error claro al usuario y se enfoque automáticamente el campo incorrecto.
+
+
+  4. Validación de Superposición de Horarios (Regla de Negocio Crítica):
+     Problema:* Un mismo visitante podía tener múltiples solicitudes activas para un mismo período.
+     Solución:* Se implementó una validación a dos niveles:
+         Backend:* Se crearon métodos en el repositorio y el controlador para verificar si ya existe una
+  solicitud superpuesta antes de crear o actualizar un registro. Esto garantiza la integridad de los datos
+  en el servidor.
+         Frontend: Se añadió un validador asíncrono* en el formulario de Angular. Este validador consulta al
+   backend en tiempo real para notificar al usuario de inmediato si el rango de fechas seleccionado ya está
+  ocupado por otra solicitud para ese visitante.
+
+
+  5. Implementación de Borrado Lógico (Soft Delete):
+     Problema:* Las solicitudes se eliminaban permanentemente de la base de datos.
+     Solución:* Se modificó el proceso de eliminación para que sea un borrado lógico:
+      *   En lugar de borrar el registro, el endpoint DELETE ahora cambia el estado de la solicitud a
+  "Anulada" (EstadoSolicitudId = 3).
+         Se actualizaron las consultas del backend para que las solicitudes anuladas no aparezcan en el
+  listado principal y no se consideren* en la validación de superposición de horarios.
+
+
+  6. Mantenimiento y Corrección de Errores:
+  *   A lo largo de la sesión, se identificaron y corrigieron múltiples errores de compilación en TypeScript
+   causados por operaciones de reemplazo de código defectuosas, restaurando el archivo solicitud.ts a un
+  estado completamente funcional.
+
+
+  En resumen, el módulo de solicitudes es ahora mucho más completo, con validaciones robustas tanto en el
+  cliente como en el servidor, una mejor experiencia de usuario y una lógica de negocio más sólida.
+
+He completado los cambios para el borrado lógico. El DeleteSolicitud en SolicitudesController ahora
+  actualiza el EstadoSolicitudId a 3. En SolicitudRepositorio, ExisteSolicitudSuperpuesta ignora los registros
+   cancelados y ObtenerPaginadoAsync los oculta por defecto. Cumplí con todos los requisitos. Terminé.
+
+Reporte Final de Interacción: Módulos de Solicitudes y Visitantes
+  1. Implementación de Borrado Lógico (Soft Delete):
+     Problema:* La eliminación de un Visitante provocaba un borrado en cascada de todas sus Solicitudes.
+  Además, las Solicitudes se eliminaban de forma permanente.
+     Solución (Full-Stack):*
+         Backend: Se modificaron los endpoints `DELETE` tanto para `Visitantes` como para `Solicitudes`.
+  Ahora realizan un borrado lógico*, cambiando el estado del registro (a "Inactivo" o "Anulada") en lugar de
+   eliminarlo de la base de datos.
+         Búsqueda Dinámica de Estados:* Para evitar errores de clave foránea y no depender de IDs fijos
+  (como el 3 o 5), el backend ahora busca el ID del estado correspondiente por su descripción de texto
+  ("Anulada", "Inactivo"). Esto robustece el sistema ante cambios en la base de datos.
+         Filtrado en Repositorios:* Se actualizaron los repositorios del backend para que los registros con
+  borrado lógico (inactivos/anulados) se excluyan automáticamente de los listados principales y de las
+  validaciones de reglas de negocio (como la superposición de horarios).
+
+
+  2. Filtrado de Datos en Formularios (Frontend):
+     Problema:* Los registros inactivos no debían poder ser seleccionados en los menús desplegables de los
+  formularios.
+     Solución:*
+         Formulario de Visitante:* Se modificó el componente visitante.ts para filtrar la lista de
+  EstadoVisitante, eliminando la opción "Inactivo" para que no se pueda asignar manualmente.
+         Formulario de Solicitud:* Se completó la tarea pendiente modificando solicitud.ts para añadir un
+  filtro del lado del cliente. Esto asegura que los visitantes marcados como "Inactivo" no aparezcan en el
+  desplegable al crear o editar una Solicitud.
+
+
+  3. Validación Avanzada de Fechas y Superposición de Horarios:
+     Problema:* Los formularios permitían rangos de fechas inválidos y no prevenían que un visitante tuviera
+   solicitudes en horarios superpuestos.
+     Solución:*
+         Mejora de UX en Fechas:* El campo "Fecha de Salida" ahora se habilita solo después de introducir
+  una "Fecha de Ingreso".
+         Validador Síncrono:* Se añadió un validador para que la fecha de salida sea siempre, como mínimo,
+  una hora posterior a la de ingreso.
+         Validador Asíncrono:* Se implementó una validación en tiempo real que consulta al backend para
+  evitar la creación de solicitudes en horarios ya ocupados por el mismo visitante, dando feedback inmediato
+   al usuario.
+         Manejo de Errores Mejorado:* Se optimizó la gestión de errores en los formularios para mostrar
+  alertas específicas, enfocar el campo incorrecto y evitar que los datos se borren tras un fallo de
+  validación.
+
+
+  4. Estabilidad y Mantenimiento del Código:
+     Problema:* Operaciones previas habían corrompido archivos del frontend (solicitud.ts), generando
+  numerosos errores de compilación.
+     Solución:* Se reconstruyeron por completo los archivos afectados, asegurando la correcta importación de
+   todos los módulos de Angular y restaurando la estabilidad del proyecto.
+
+
+  5. Funcionalidad de Búsqueda:
+     Problema:* La barra de búsqueda principal no funcionaba correctamente.
+     Solución:* Se corrigió la lógica en el backend para permitir que un solo término de búsqueda consulte
+  simultáneamente en los nombres de los visitantes y las placas de los vehículos.
+
+
+  En resumen, las reglas de negocio clave (borrado lógico, validación de horarios) se han implementado
+  exitosamente en toda la aplicación. Los formularios del frontend son ahora más inteligentes y la
+  integridad de los datos en el backend es significativamente más fuerte.
+
+### Reporte de Interacción: Mejoras en Formularios de Visitantes y Solicitudes
+
+**Objetivo:** Mejorar la validación, robustez y experiencia de usuario en los formularios de los módulos de Visitantes y Solicitudes.
+
+1.  **Validación de Formularios (Módulo de Visitantes):**
+    *   **Problema:** Los formularios no indicaban visualmente al usuario qué campos eran obligatorios.
+    *   **Solución:** Se implementaron mensajes de error y resaltado visual (bordes rojos) en el formulario de `Visitantes`. Ahora, si un campo requerido está vacío, el usuario recibe feedback inmediato y claro.
+
+2.  **Validación de Duplicados en Tiempo Real (Módulo de Visitantes):**
+    *   **Problema:** Al crear un visitante con un número de documento ya existente, el backend lo rechazaba, pero el formulario del frontend simplemente se limpiaba sin informar al usuario de la causa del error.
+    *   **Solución (Full-Stack):**
+        *   **Backend:** Se añadió un endpoint `GET` específico y eficiente para verificar la existencia de un número de documento en tiempo real.
+        *   **Frontend:** Se implementó un **validador asíncrono** en el formulario de `Visitantes`. Este validador consulta al backend mientras el usuario escribe, notificándole instantáneamente si el número de documento ya está en uso.
+        *   **Manejo de Errores Robusto:** Se mejoró la lógica de guardado para que, en caso de un error de duplicado (`409 Conflict`), el formulario no se cierre y muestre un mensaje de error específico.
+
+3.  **Corrección de Errores de Compilación:**
+    *   **Problema:** Una modificación previa introdujo un error de tipos en TypeScript (`TS2349`) que impedía la compilación del proyecto.
+    *   **Solución:** Se refactorizó el código en `visitante.ts`, separando la lógica de creación y actualización para resolver la ambigüedad de tipos y restaurar la compilación.
+
+4.  **Mejoras de Diseño en Formularios (Módulo de Solicitudes):**
+    *   **Problema 1:** En el formulario de `Nueva Solicitud`, la etiqueta del campo "Visitante" se mostraba al lado del campo en lugar de encima, rompiendo el diseño.
+    *   **Solución 1:** Se reestructuró el HTML del componente para aislar las clases de layout de la rejilla de las clases de control de formulario, corrigiendo el conflicto de CSS.
+    *   **Problema 2:** Los campos "Fecha y Hora de Ingreso" y "Fecha y Hora de Salida" aparecían en filas distintas, dificultando la comparación.
+    *   **Solución 2:** Se reorganizaron los campos en la plantilla para que ambos aparezcan en la misma fila, mejorando la disposición visual y la usabilidad.
+
+**Resumen General:** Los formularios de la aplicación son ahora significativamente más inteligentes y robustos. Se ha mejorado la retroalimentación al usuario con validaciones en tiempo real y un manejo de errores más claro, y se han corregido inconsistencias en el diseño para una experiencia más fluida.
+
+### Reporte de Interacción: Módulo de Registro Inteligente y Mejoras Generales
+
+**Objetivo:** Crear un nuevo flujo de trabajo para el registro de entradas y salidas que sea más rápido y menos propenso a errores para el personal de seguridad, y corregir errores existentes.
+
+1.  **Corrección del Selector de Tema (Dark/Light Mode):**
+    *   **Problema:** El interruptor para cambiar entre tema claro y oscuro no funcionaba correctamente si el tema por defecto del sistema operativo era oscuro.
+    *   **Solución:** Se refactorizó el `NavbarComponent` para detectar correctamente la preferencia del sistema en la primera visita y para aplicar el atributo `data-theme` directamente en la etiqueta `<html>`, asegurando que el cambio de tema se aplique visualmente en toda la aplicación.
+
+2.  **Creación del Módulo de "Registro Inteligente" (Full-Stack):**
+    *   **Problema:** El proceso de registro de entradas/salidas era manual y propenso a errores. Se necesitaba un flujo de trabajo más guiado.
+    *   **Solución (Enfoque Evolutivo):**
+        1.  **Propuesta Inicial:** Se propuso un nuevo flujo donde el vigilante introduce el número de documento del visitante.
+        2.  **Desarrollo del Backend (API):** Se creó un nuevo endpoint "inteligente" (`GET /api/Registros/sugerencia`). Este endpoint recibe el número de documento y realiza la siguiente lógica:
+            *   Busca al visitante.
+            *   Encuentra sus solicitudes activas y que no han expirado.
+            *   Analiza los registros de entrada/salida ya existentes para esas solicitudes.
+            *   Devuelve un objeto con **acciones sugeridas** (ej: "Registrar INGRESO para Solicitud #123") o un mensaje si no hay acciones posibles (ej: "El visitante no tiene solicitudes activas").
+        3.  **Desarrollo del Frontend (Angular):** Se refactorizó por completo el `RegistrosComponent` y su plantilla para implementar una interfaz de dos pasos:
+            *   **Paso 1:** El vigilante introduce el número de documento y pulsa "Buscar".
+            *   **Paso 2:** La interfaz muestra el nombre del visitante y las acciones sugeridas por la API como opciones seleccionables. Si no hay sugerencias, muestra el mensaje correspondiente y un botón para el siguiente paso.
+        4.  **Depuración Extensiva (Full-Stack):** Se diagnosticaron y resolvieron una serie de errores complejos para lograr la comunicación entre el frontend y el backend:
+            *   **Errores de Base de Datos (API):** Se corrigió un error recurrente (`Invalid column name 'SolicitudId1'`) ajustando la configuración de relaciones de Entity Framework Core (Fluent API) en el `DbContext`.
+            *   **Errores de Ruteo (API/Frontend):** Se solucionó un error `404 Not Found` al corregir la URL base en el servicio de Angular, que omitía el prefijo `/api`.
+            *   **Errores de CORS (Frontend):** Se diagnosticó un problema de comunicación persistente. Se solucionó cambiando el método del endpoint de `POST` a `GET` para simplificar la petición y evitar problemas con el "preflight" del navegador.
+
+**Estado Actual:**
+El flujo principal del "Registro Inteligente" está implementado y funcional. El vigilante puede buscar un visitante y el sistema le presenta las opciones correctas. El mensaje para el caso de "registro manual" (cuando no hay solicitud) se muestra correctamente, dejando la puerta abierta para implementar esa funcionalidad.
+
+### Reporte de Interacción: Refactorización y Mejoras (24/10/2025)
+
+**Objetivo:** Separar la lógica de catálogos específicos para añadir funcionalidades particulares y mejorar la experiencia de usuario en el módulo de registros.
+
+1.  **Refactorización del Catálogo `Estados de Solicitud` (Full-Stack):**
+    *   **Problema:** El catálogo de "Estados de Solicitud" necesitaba campos adicionales (`mensaje` y `esConsideradaParaRegistro`) que no encajaban en el componente genérico de catálogos.
+    *   **Solución (Frontend):**
+        *   Se desacopló `estados-solicitud.component` del componente genérico `catalogo-crud`.
+        *   Se creó una nueva interfaz (`estado-solicitud.interface.ts`) y un nuevo servicio (`estados-solicitud.service.ts`) específicos para manejar la lógica y los datos de este catálogo.
+        *   Se actualizó la plantilla HTML para incluir los nuevos campos en el formulario y en la tabla de visualización.
+    *   **Solución (Backend):**
+        *   Se crearon DTOs específicos (`EstadoSolicitudDto`, `EstadoSolicitudCreateDto`) para la entidad `EstadoSolicitud`.
+        *   Se actualizó el perfil de `AutoMapper` para incluir los nuevos mapeos.
+        *   Se modificó el `EstadosSolicitudController` para que utilice los nuevos DTOs, exponiendo así los nuevos campos a través de la API.
+
+2.  **Mejoras en el Módulo de "Registro Inteligente" (Frontend):**
+    *   **Problema 1:** Al buscar un visitante, la información de las acciones sugeridas no se mostraba en la interfaz hasta que el usuario interactuaba con la página (un problema de detección de cambios).
+    *   **Solución 1:** Se inyectó `ChangeDetectorRef` en `registros.component.ts` y se llamó a `detectChanges()` manualmente después de recibir la respuesta de la API, forzando la actualización inmediata de la vista.
+    *   **Problema 2:** El componente solo mostraba las acciones exactas que sugería la API, limitando al guardia de seguridad.
+    *   **Solución 2:** Se modificó la lógica para que, al recibir una sugerencia, siempre se muestren las dos opciones principales: **"Registrar INGRESO"** y **"Registrar SALIDA"**. La acción recomendada por la API ahora viene preseleccionada, pero el guardia tiene la flexibilidad de elegir la otra opción antes de registrar la acción.
+
+**Resumen General:** Se ha modularizado y especializado con éxito un componente de catálogo que tenía requerimientos únicos, mejorando la mantenibilidad del código. Adicionalmente, se ha hecho más flexible y robusto el flujo de registro inteligente, solucionando problemas de UI y adaptándolo mejor a las necesidades del usuario final.
+
+### Reporte de Interacción: Lógica de Registro Inteligente Avanzada (26/10/2025)
+
+**Objetivo:** Refinar la lógica de negocio del "Registro Inteligente" para manejar correctamente los casos de uso complejos, específicamente el escenario de "Salida Forzosa", y mejorar la robustez general del frontend y backend.
+
+1.  **Implementación de Regla de "Salida Forzosa" (Full-Stack):**
+    *   **Problema:** Un visitante que había ingresado con una solicitud que luego expiraba, no tenía una forma clara de registrar su salida, y el sistema podía sugerir incorrectamente un nuevo ingreso si existía otra solicitud válida.
+    *   **Solución (Backend):** Se reescribió por completo la lógica en `RegistrosController.cs`. Ahora el sistema:
+        1.  Determina el estado físico del visitante ("dentro" o "fuera") basado en su último registro global.
+        2.  **Si el visitante está "dentro" y su solicitud de ingreso ha expirado**, la API ahora devuelve **únicamente** la acción de "SALIDA" como posible. Esto representa el caso de "Salida Forzosa".
+        3.  **En todos los demás casos normales**, la API devuelve una lista con **ambas** acciones (ENTRADA y SALIDA), permitiendo flexibilidad al guardia de seguridad, pero con la acción más lógica como sugerencia principal.
+    *   **Solución (Frontend):** Se adaptó el `RegistrosComponent` para que su interfaz sea completamente dinámica.
+        *   El componente ahora renderiza las opciones de ENTRADA/SALIDA basándose en la lista de acciones que envía la API.
+        *   Esto asegura que en el escenario de "Salida Forzosa", solo el botón de "SALIDA" será visible, guiando al usuario a realizar la única acción correcta.
+
+2.  **Corrección de Errores Críticos de Compilación (Frontend):**
+    *   **Problema:** Modificaciones anteriores habían corrompido el archivo `registros.component.ts`, generando numerosos errores de compilación que impedían el funcionamiento de la aplicación.
+    *   **Solución:** Se reconstruyó por completo el archivo, restaurando métodos que se habían eliminado accidentalmente (`registrar`, `reset`), corrigiendo errores de sintaxis (llaves `}` faltantes) y añadiendo las importaciones necesarias (`AccionSugeridaDto`).
+
+3.  **Mejora del Diseño de la Interfaz de Registro (Frontend):**
+    *   **Problema:** El diseño para la selección de ENTRADA/SALIDA era estático y no se adaptaba a la nueva lógica.
+    *   **Solución:** Se implementó un diseño visual más claro usando un `divider` de DaisyUI y se hizo completamente dinámico para reflejar las acciones permitidas por el backend.
+
+**Resumen General:** El módulo de "Registro Inteligente" es ahora significativamente más robusto y seguro. La lógica de negocio maneja correctamente el caso crítico de un visitante que debe registrar su salida con una solicitud expirada. El frontend ha sido estabilizado, reparando errores de compilación, y su interfaz ahora se adapta dinámicamente a las reglas del negocio, proporcionando una experiencia de usuario más clara y a prueba de errores.
+
+### Reporte de Interacción: Lógica de Registro Avanzada y Corrección de Flujo (27/10/2025)
+
+**Objetivo General:** Implementar un flujo para registrar visitantes sin una solicitud pre-existente (entrada con autorización) y corregir los errores lógicos derivados para asegurar que el ciclo completo de entrada y salida sea coherente y robusto.
+
+1.  **Nueva Funcionalidad: "Ingreso con Autorización" (Full-Stack):**
+    *   **Problema:** No existía un procedimiento para registrar a un visitante que llegaba sin una solicitud activa en el sistema.
+    *   **Solución:**
+        *   **Backend:** Se modificó el endpoint de sugerencias (`GET /api/Registros/sugerencia`). Ahora, si un visitante no tiene solicitudes válidas, la API sugiere una acción especial de **"Ingreso con Autorización"**. Para permitirlo, el modelo `Registro` y los DTOs (`RegistroCreateDto`, `AccionSugeridaDto`) se actualizaron para que `SolicitudId` pudiera ser nulo.
+        *   **Frontend:** La interfaz de "Registro Inteligente" ahora detecta esta sugerencia especial. Muestra un mensaje indicando que se requiere autorización y hace que el campo **"Observación" sea obligatorio**, para que el guardia de seguridad documente quién permitió el acceso.
+
+2.  **Corrección de Flujo Lógico Crítico (Full-Stack Refactor):**
+    *   **Problema:** Tras un "Ingreso con Autorización", el sistema no detectaba que el visitante estaba "dentro". Al buscarlo de nuevo para registrar su salida, volvía a pedir autorización de entrada en un bucle incorrecto.
+    *   **Causa Raíz:** La lógica para determinar el estado del visitante se basaba en registros asociados a solicitudes, ignorando por completo los registros manuales sin `SolicitudId`.
+    *   **Solución (Refactorización Profunda):**
+        *   **Modelo de Datos:** Se corrigió el diseño estableciendo un vínculo directo y obligatorio entre un `Registro` y un `Visitante`. Se añadió la clave foránea `VisitanteId` a la tabla `Registros`.
+        *   **Base de Datos:** Se generó y aplicó una nueva migración para reflejar el cambio en el esquema (manejando conflictos con datos existentes).
+        *   **Backend:** Se reescribió la lógica del `RegistrosController`. Ahora utiliza un nuevo método de repositorio (`ObtenerUltimoPorVisitante`) que consulta directamente por `VisitanteId`, garantizando que el estado "dentro/fuera" del visitante se determine de forma fiable para **todos los tipos de registro**.
+        *   **Frontend:** Se actualizó el componente para que siempre envíe el `VisitanteId` al crear un registro, completando el flujo de datos.
+
+3.  **Mejora de Usabilidad: Contexto en la Salida (Full-Stack):**
+    *   **Problema:** Al registrar la salida de una visita autorizada, el guardia no tenía visibilidad de por qué se había permitido la entrada originalmente.
+    *   **Solución:**
+        *   **Backend:** La respuesta de la API ahora incluye un nuevo campo, `observacionPrevia`, que contiene el texto de la observación del registro de ingreso.
+        *   **Frontend:** La interfaz ahora usa este campo para **pre-rellenar automáticamente** el área de texto "Observación" al sugerir una salida, dando al guardia el contexto necesario de forma inmediata.
+
+4.  **Corrección de Errores de Compilación:**
+    *   Se solucionó un error de compilación en la API de C# (`Invalid token '}'`) causado por una definición de clase DTO corrupta durante una modificación.
+    *   Se solucionó un error de compilación en Angular (`Property 'Validators' does not exist`) haciendo accesible la clase `Validators` en la plantilla del componente.
+
+**Resumen General:** El flujo de registro es ahora mucho más completo y correcto. El sistema no solo maneja el caso feliz (visitante con solicitud), sino también la excepción (visitante sin solicitud), y mantiene la coherencia lógica para registrar su posterior salida, mejorando significativamente la fiabilidad y la experiencia de usuario para el personal de seguridad.
+### Reporte de Interacción: Robustez de Filtros y Corrección de Causa Raíz (31/10/2025)
+
+**Objetivo:** Solucionar un bug persistente que mostraba incorrectamente las solicitudes "Anulada" y robustecer la lógica de la aplicación para evitar errores similares en el futuro.
+
+1.  **Eliminación de IDs Fijos (Hardcoded IDs) en el Backend:**
+    *   **Problema:** La lógica para ocultar por defecto las solicitudes "Anulada" fallaba. Tras una larga depuración, se descubrió que el código usaba un ID fijo (`3`) para identificar este estado, pero en la base de datos del usuario, el ID real era `5`.
+    *   **Solución (Full-Stack y Robusta):**
+        *   **Refactorización del Repositorio:** Se modificó por completo el `SolicitudRepositorio`. Ahora, todos los métodos que necesitan filtrar por el estado "Anulada" (`ObtenerPaginadoAsync`, `ExisteSolicitudSuperpuesta`, etc.) ya no usan un ID fijo. En su lugar, **buscan dinámicamente el ID correspondiente a la descripción "Anulada"** en tiempo de ejecución. 
+        *   **Beneficio:** Esta solución hace que el sistema sea resiliente ante cambios en la base de datos. El estado "Anulada" puede tener cualquier ID y el código seguirá funcionando correctamente.
+
+2.  **Filtrado de la Interfaz de Usuario (Frontend):**
+    *   **Problema:** El estado "Anulada" no debía ser visible en la gestión de catálogos ni ser una opción seleccionable en los formularios de solicitud.
+    *   **Solución:**
+        *   **Tabla de Catálogo:** Se modificó `estados-solicitud.component.ts` para filtrar la lista de estados, ocultando "Anulada" de esta vista de gestión.
+        *   **Formulario de Solicitudes:** Se modificó `solicitud.ts` para filtrar el menú desplegable de estados, previniendo que los usuarios asignen manualmente el estado "Anulada".
+
+3.  **Estabilización de Componentes y Depuración:**
+    *   **Problema de Compilación:** Durante la sesión, surgió un error de compilación (`NG2008: Could not find template file`) que impedía el desarrollo.
+    *   **Solución:** Se refactorizó el componente `estados-solicitud.component.ts` para usar una **plantilla en línea** (inline template) en lugar de un archivo HTML externo, lo que resolvió un problema persistente de resolución de rutas de archivos en el entorno de herramientas.
+    *   **Problema de Diagnóstico:** Se invirtió un tiempo considerable en depurar por qué los cambios no se reflejaban, descubriendo finalmente que se estaba ejecutando una copia incorrecta del proyecto de backend. Este hallazgo fue crucial para poder aplicar las correcciones en el lugar correcto.
+
+**Resumen General:** Se ha solucionado un bug complejo y engañoso, y en el proceso, se ha mejorado significativamente la robustez y mantenibilidad del código al eliminar la dependencia de IDs fijos. La interfaz de usuario ahora se comporta como se espera y la base del código es más estable.
+### Reporte de Interacción: Mejoras de UX y Lógica de Negocio en "Registro Inteligente" (30/10/2025)
+
+**Objetivo:** Aumentar la seguridad y mejorar la experiencia de usuario (UX) del personal de seguridad en el módulo de "Registro Inteligente", asegurando que la información presentada sea clara, contextual y que las reglas de negocio (como el estado del visitante) se apliquen correctamente.
+
+1.  **Verificación de Estado del Visitante (Full-Stack):**
+    *   **Problema:** El sistema permitía iniciar un registro de acceso incluso si el visitante estaba "Bloqueado" o "Suspendido".
+    *   **Solución:**
+        *   **Backend:** Se enriqueció la respuesta de la API (`GET /api/Registros/sugerencia`) para que siempre incluya el estado actual del visitante (ej: "Normal", "Bloqueado").
+        *   **Frontend:** La interfaz de registro ahora muestra de forma prominente el estado del visitante con un `alert` de color (verde para "Normal", rojo para "Bloqueado", etc.). Crucialmente, el formulario para registrar la entrada o salida **solo se habilita si el estado del visitante es "Normal"**, previniendo accesos indebidos.
+
+2.  **Mejora de Mensajes de Estado (Full-Stack):**
+    *   **Problema:** Los mensajes mostrados al guardia eran genéricos y no reflejaban la información específica del estado de la solicitud (ej: "Activa", "Autorizada").
+    *   **Solución:** Se refactorizó la lógica en `RegistrosController`. Ahora, el mensaje mostrado se extrae directamente del campo `mensaje` del `EstadoSolicitud` correspondiente, tanto para sugerencias de entrada como de salida. Esto proporciona al personal instrucciones mucho más precisas y contextuales.
+
+3.  **Modernización de la Interfaz y Notificaciones (Frontend):**
+    *   **Refactorización de Plantilla:** Se actualizó toda la plantilla de `registros.component.html` para usar la nueva sintaxis de control de flujo de Angular (`@if`, `@else`, `@switch`), eliminando las directivas `*ngIf` y mejorando la legibilidad del código.
+    *   **Notificaciones "Toast":** Se reemplazó el `alert()` nativo del navegador por notificaciones tipo "toast" (de DaisyUI) que desaparecen automáticamente. Esto confirma el éxito de un registro sin interrumpir el flujo de trabajo del usuario.
+
+4.  **Corrección de Errores de Compilación:**
+    *   Se solucionaron múltiples errores de sintaxis en la plantilla (`NG5002: Unexpected closing block`) que surgieron durante la refactorización, restaurando la compilación del proyecto.
+
+**Resumen General:** El módulo de "Registro Inteligente" es ahora más seguro, informativo y moderno. Impide activamente el registro de visitantes no autorizados, comunica el estado del sistema de forma más clara y proporciona una experiencia de usuario más fluida y profesional para el personal de seguridad.

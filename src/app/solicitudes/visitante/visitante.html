@@ -109,59 +109,102 @@
     <form [formGroup]="visitanteForm" (ngSubmit)="guardarOActualizarVisitante()" class="py-4">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 
+        <!-- Nombre -->
         <div class="form-control">
           <label class="label"><span class="label-text">Nombre</span></label>
-          <input type="text" formControlName="nombre" class="input input-bordered" />
+          <input type="text" formControlName="nombre" class="input input-bordered" [class.input-error]="visitanteForm.get('nombre')?.invalid && visitanteForm.get('nombre')?.touched" />
+          @if (visitanteForm.get('nombre')?.invalid && visitanteForm.get('nombre')?.touched) {
+            <div class="text-error text-xs mt-1">
+              El nombre es requerido.
+            </div>
+          }
         </div>
+
+        <!-- Apellido -->
         <div class="form-control">
           <label class="label"><span class="label-text">Apellido</span></label>
-          <input type="text" formControlName="apellido" class="input input-bordered" />
+          <input type="text" formControlName="apellido" class="input input-bordered" [class.input-error]="visitanteForm.get('apellido')?.invalid && visitanteForm.get('apellido')?.touched" />
+          @if (visitanteForm.get('apellido')?.invalid && visitanteForm.get('apellido')?.touched) {
+            <div class="text-error text-xs mt-1">
+              El apellido es requerido.
+            </div>
+          }
         </div>
+
+        <!-- Tipo de Documento -->
         <div class="form-control">
           <label class="label"><span class="label-text">Tipo de Documento</span></label>
-          <select formControlName="tipoDocumentoId" class="select select-bordered">
+          <select formControlName="tipoDocumentoId" class="select select-bordered" [class.select-error]="visitanteForm.get('tipoDocumentoId')?.invalid && visitanteForm.get('tipoDocumentoId')?.touched">
             <option [ngValue]="null" disabled>Seleccione...</option>
             @for(tipo of tiposDocumento(); track tipo.id) {
               <option [ngValue]="tipo.id">{{ tipo.descripcion }}</option>
             }
           </select>
+          @if (visitanteForm.get('tipoDocumentoId')?.invalid && visitanteForm.get('tipoDocumentoId')?.touched) {
+            <div class="text-error text-xs mt-1">
+              Seleccione un tipo de documento.
+            </div>
+          }
         </div>
+
+        <!-- Número de Documento -->
         <div class="form-control">
           <label class="label"><span class="label-text">Número de Documento</span></label>
-          <input type="number" formControlName="numero" class="input input-bordered" />
+          <input type="number" formControlName="numero" class="input input-bordered" [class.input-error]="visitanteForm.get('numero')?.invalid && visitanteForm.get('numero')?.touched" />
+          @if (visitanteForm.get('numero')?.hasError('required') && visitanteForm.get('numero')?.touched) {
+            <div class="text-error text-xs mt-1">
+              El número de documento es requerido.
+            </div>
+          }
+          @if (visitanteForm.get('numero')?.hasError('documentoExistente')) {
+            <div class="text-error text-xs mt-1">
+              Este número de documento ya está registrado.
+            </div>
+          }
         </div>
+
+        <!-- Cargo -->
         <div class="form-control block">
           <label class="label"><span class="label-text">Cargo</span></label>
-          <input type="text" formControlName="cargo" class="input input-bordered" />
+          <input type="text" formControlName="cargo" class="input input-bordered" [class.input-error]="visitanteForm.get('cargo')?.invalid && visitanteForm.get('cargo')?.touched" />
+          @if (visitanteForm.get('cargo')?.invalid && visitanteForm.get('cargo')?.touched) {
+            <div class="text-error text-xs mt-1">
+              El cargo es requerido.
+            </div>
+          }
         </div>
+
+        <!-- Nivel de Riesgo -->
         <div class="form-control">
           <label class="label"><span class="label-text">Nivel de Riesgo</span></label>
-          <select formControlName="nivelRiesgoId" class="select select-bordered">
+          <select formControlName="nivelRiesgoId" class="select select-bordered" [class.select-error]="visitanteForm.get('nivelRiesgoId')?.invalid && visitanteForm.get('nivelRiesgoId')?.touched">
             <option [ngValue]="null" disabled>Seleccione...</option>
             @for(nivel of nivelesRiesgo(); track nivel.id) {
               <option [ngValue]="nivel.id">{{ nivel.descripcion }}</option>
             }
           </select>
+          @if (visitanteForm.get('nivelRiesgoId')?.invalid && visitanteForm.get('nivelRiesgoId')?.touched) {
+            <div class="text-error text-xs mt-1">
+              Seleccione un nivel de riesgo.
+            </div>
+          }
         </div>
+
+        <!-- Estado del Visitante -->
         <div class="form-control">
           <label class="label"><span class="label-text">Estado del Visitante</span></label>
-           <select formControlName="estadoVisitanteId" class="select select-bordered">
+           <select formControlName="estadoVisitanteId" class="select select-bordered" [class.select-error]="visitanteForm.get('estadoVisitanteId')?.invalid && visitanteForm.get('estadoVisitanteId')?.touched">
             <option [ngValue]="null" disabled>Seleccione...</option>
             @for(estado of estadosVisitante(); track estado.id) {
               <option [ngValue]="estado.id">{{ estado.descripcion }}</option>
             }
           </select>
+          @if (visitanteForm.get('estadoVisitanteId')?.invalid && visitanteForm.get('estadoVisitanteId')?.touched) {
+            <div class="text-error text-xs mt-1">
+              Seleccione un estado.
+            </div>
+          }
         </div>
-        <div class="form-control">
-          <label class="input input-bordered flex items-center gap-2">
-
-            <span class="label-text">Nombre</span>
-
-            <input type="text" class="grow" placeholder="Escribe aquí" />
-
-          </label>
-        </div>
-
       </div>
     </form>
 

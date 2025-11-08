@@ -1,1 +1,269 @@
-<p>solicitud works!</p>
+<div class="p-4 sm:p-6 lg:p-8">
+
+  <div class="card bg-base-100 shadow-xl mb-6">
+    <div class="card-body">
+      <h2 class="card-title">Buscar Solicitudes</h2>
+      <form [formGroup]="searchForm">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+         <div class="form-control">
+            <label class="label">
+              <span class="label-text">Buscar</span>
+            </label>
+            <input
+              type="text"
+              placeholder="Buscar por visitante o vehículo..."
+              class="input input-bordered w-full"
+              formControlName="busquedaGeneral">
+          </div>
+
+          <div class="form-control self-end">
+            <button type="button" class="btn btn-secondary" (click)="abrirModalBusquedaAvanzada()">Búsqueda Avanzada</button>
+          </div>
+
+          <div class="form-control self-end">
+             <button type="button" class="btn btn-primary" (click)="abrirModalCrear()">Nueva Solicitud</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="overflow-x-auto bg-base-100 rounded-box shadow-xl">
+    @if (paginatedResponse(); as response) {
+      <table class="table table-zebra">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Visitante</th>
+            <th>F. Ingreso</th>
+            <th>F. Salida</th>
+            <th>Destino</th>
+            <th>Vehículo</th>
+            <th>Estado</th>
+            <th class="text-right">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (solicitud of response.items; track solicitud.id) {
+            <tr>
+              <td>{{ solicitud.id }}</td>
+              <td>{{ solicitud.visitanteNombre }}</td>
+              <td>{{ solicitud.f_Ingreso | date:'dd/MM/yyyy h:mm a' }}</td>
+              <td>{{ solicitud.f_Salida | date:'dd/MM/yyyy h:mm a' }}</td>
+              <td>{{ solicitud.destino }}</td>
+              <td><div class="badge badge-neutral">{{ solicitud.vehiculoPlaca || 'N/A' }}</div></td>
+              <td><div class="badge badge-info">{{ solicitud.estadoSolicitud }}</div></td>
+              <td class="text-right">
+                <button (click)="abrirModalEditar(solicitud)" class="btn btn-outline btn-info btn-sm" title="Editar">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24" ><path d="M5 21h14c1.1 0 2-.9 2-2v-7h-2v7H5V5h7V3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2z"></path><path d="M7 13v3c0 .55.45 1 1 1h3c.27 0 .52-.11.71-.29l9-9a.996.996 0 0 0 0-1.41l-3-3a.996.996 0 0 0-1.41 0l-9.01 8.99A1 1 0 0 0 7 13zm10-7.59L18.59 7 17.5 8.09 15.91 6.5zm-8 8 5.5-5.5 1.59 1.59-5.5 5.5H9z"></path></svg>
+                </button>
+                <button (click)="prepararEliminacion(solicitud.id)" class="btn btn-outline btn-error btn-sm ml-2" title="Eliminar">
+                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="m17,6v-2c0-1.1-.9-2-2-2h-6c-1.1,0-2,.9-2,2v2H2v2h2v12c0,1.1.9,2,2,2h12c1.1,0,2-.9,2-2v-12h2v-2h-5Zm-8-2h6v2h-6v-2Zm9,16H6v-12h12v12Z"></path><path d="M14.29 10.29 12 12.59 9.71 10.29 8.29 11.71 10.59 14 8.29 16.29 9.71 17.71 12 15.41 14.29 17.71 15.71 16.29 13.41 14 15.71 11.71 14.29 10.29z"></path></svg>
+                </button>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="8" class="text-center p-4">No se encontraron solicitudes.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+
+      <div class="flex justify-between items-center p-4">
+        <span class="text-sm">
+          Mostrando {{ response.items.length }} de {{ response.totalRegistros }} registros.
+        </span>
+        <div class="join">
+          <button
+            class="join-item btn"
+            (click)="cambiarPagina(response.paginaActual - 1)"
+            [disabled]="!response.tienePaginaAnterior">
+            «
+          </button>
+          <button class="join-item btn">Página {{ response.paginaActual }} de {{ response.totalPaginas }}</button>
+          <button
+            class="join-item btn"
+            (click)="cambiarPagina(response.paginaActual + 1)"
+            [disabled]="!response.tienePaginaSiguiente">
+            »
+          </button>
+        </div>
+      </div>
+    } @else {
+      <div class="flex justify-center items-center p-10">
+        <span class="loading loading-lg loading-spinner text-primary"></span>
+      </div>
+    }
+  </div>
+</div>
+
+<!-- Modal para Búsqueda Avanzada -->
+<dialog id="advanced_search_modal" class="modal">
+  <div class="modal-box w-11/12 max-w-2xl">
+    <h3 class="font-bold text-lg">Búsqueda Avanzada</h3>
+    <form [formGroup]="advancedSearchForm" (ngSubmit)="aplicarFiltrosAvanzados()" class="py-4">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text">Destino</span>
+          </label>
+          <select class="select select-bordered w-full" formControlName="destino">
+            <option value="">Todos</option>
+            @for(destino of destinos(); track destino.id) {
+              <option [ngValue]="destino.id">{{ destino.descripcion }}</option>
+            }
+          </select>
+        </div>
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text">Estado</span>
+          </label>
+          <select class="select select-bordered w-full" formControlName="estado">
+            <option value="">Todos</option>
+            @for(estado of estadosSolicitud(); track estado.id) {
+              <option [ngValue]="estado.id">{{ estado.descripcion }}</option>
+            }
+          </select>
+        </div>
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text">Fecha Desde</span>
+          </label>
+          <input
+            type="date"
+            class="input input-bordered w-full"
+            formControlName="fechaDesde">
+        </div>
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text">Fecha Hasta</span>
+          </label>
+          <input
+            type="date"
+            class="input input-bordered w-full"
+            formControlName="fechaHasta">
+        </div>
+      </div>
+    </form>
+    <div class="modal-action">
+      <form method="dialog">
+        <button class="btn">Cancelar</button>
+      </form>
+      <button class="btn btn-primary" (click)="aplicarFiltrosAvanzados()">Filtrar</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- Modal para Crear/Editar Solicitud -->
+<dialog id="solicitud_modal" class="modal">
+  <div class="modal-box w-11/12 max-w-2xl">
+    <h3 class="font-bold text-lg">{{ isEditMode() ? 'Editar Solicitud' : 'Nueva Solicitud' }}</h3>
+    <form [formGroup]="solicitudForm" (ngSubmit)="guardarOActualizarSolicitud()" class="py-4">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Visitante -->
+        <div class="md:col-span-2">
+          <div class="form-control">
+            <label class="label"><span class="label-text">Visitante</span></label>
+            <select formControlName="visitanteId" class="select select-bordered w-full" [class.select-error]="solicitudForm.get('visitanteId')?.invalid && solicitudForm.get('visitanteId')?.touched">
+              <option [ngValue]="null" disabled>Seleccione...</option>
+              @for(visitante of visitantes(); track visitante.id) {
+                <option [ngValue]="visitante.id">{{ visitante.nombreCompleto }}</option>
+              }
+            </select>
+            @if (solicitudForm.get('visitanteId')?.hasError('required') && solicitudForm.get('visitanteId')?.touched) {
+              <div class="label">
+                <span class="label-text-alt text-error">Debe seleccionar un visitante.</span>
+              </div>
+            }
+            @if (solicitudForm.hasError('superposicion') && solicitudForm.get('visitanteId')?.touched) {
+              <div class="label">
+                <span class="label-text-alt text-error">Este visitante ya tiene una solicitud en el horario seleccionado.</span>
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Fecha y Hora de Ingreso -->
+        <div class="form-control">
+          <label class="label"><span class="label-text">Fecha y Hora de Ingreso</span></label>
+          <input type="datetime-local" formControlName="f_Ingreso" class="input input-bordered" />
+        </div>
+
+        <!-- Fecha y Hora de Salida -->
+        <div class="form-control">
+          <label class="label"><span class="label-text">Fecha y Hora de Salida</span></label>
+          <input id="f_Salida_input" type="datetime-local" formControlName="f_Salida" class="input input-bordered" [min]="minSalidaDate" />
+          @if (solicitudForm.hasError('fechaSalidaInvalida') && solicitudForm.get('f_Salida')?.touched) {
+            <div class="label">
+              <span class="label-text-alt text-error">La fecha de salida debe ser al menos una hora posterior a la de ingreso.</span>
+            </div>
+          }
+        </div>
+
+        <!-- Destino -->
+        <div class="form-control">
+          <label class="label"><span class="label-text">Destino</span></label>
+          <select formControlName="destinoId" class="select select-bordered">
+            <option [ngValue]="null" disabled>Seleccione...</option>
+            @for(destino of destinos(); track destino.id) {
+              <option [ngValue]="destino.id">{{ destino.descripcion }}</option>
+            }
+          </select>
+        </div>
+
+        <!-- Estado de la Solicitud -->
+        <div class="form-control">
+          <label class="label"><span class="label-text">Estado de la Solicitud</span></label>
+          <select formControlName="estadoSolicitudId" class="select select-bordered">
+            <option [ngValue]="null" disabled>Seleccione...</option>
+            @for(estado of estadosSolicitud(); track estado.id) {
+              <option [ngValue]="estado.id">{{ estado.descripcion }}</option>
+            }
+          </select>
+        </div>
+
+        <!-- Vehículo -->
+        <div class="form-control">
+          <label class="label"><span class="label-text">Vehículo (Opcional)</span></label>
+          <select formControlName="vehiculoId" class="select select-bordered">
+            <option [ngValue]="null">Seleccione...</option>
+            <!-- Assuming 'vehiculos' is available in the component -->
+            @for(vehiculo of vehiculos(); track vehiculo.id) {
+              <option [ngValue]="vehiculo.id">{{ vehiculo.placa }}</option>
+            }
+          </select>
+        </div>
+      </div>
+    </form>
+    <div class="modal-action">
+      <form method="dialog">
+        <button class="btn">Cancelar</button>
+      </form>
+      <button class="btn btn-primary" (click)="guardarOActualizarSolicitud()">{{ isEditMode() ? 'Actualizar' : 'Guardar' }}</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- Modal de Confirmación de Eliminación -->
+<dialog id="delete_solicitud_modal" class="modal">
+  <div class="modal-box">
+    <h3 class="font-bold text-lg text-error">Confirmar Eliminación</h3>
+    <p class="py-4">¿Estás seguro de que deseas eliminar esta solicitud? Esta acción no se puede deshacer.</p>
+    <div class="modal-action">
+      <form method="dialog">
+        <button class="btn">Cancelar</button>
+        <button class="btn btn-error ml-2" (click)="confirmarEliminacion()">Sí, Eliminar</button>
+      </form>
+    </div>
+  </div>
+</dialog>
+
+<!-- Alerta -->
+@if (showAlert()) {
+  <div class="alert alert-{{alertStatus()}} shadow-lg fixed bottom-4 right-4 w-auto">
+    <div>
+      <span>{{ alertMessage() }}</span>
+    </div>
+  </div>
+}

@@ -8,6 +8,8 @@ import { environment } from '../../environments/environment';
 import { Visitante, UpsertVisitante, VisitanteEditable } from '../interfaces/visitante.interface';
 import { PaginatedResponse } from '../interfaces/paginated-response.interface';
 
+import { map } from 'rxjs/operators';
+
 @Injectable({
   providedIn: 'root'
 })
@@ -15,6 +17,19 @@ export class VisitantesService {
 
   private http = inject(HttpClient);
   private baseUrl = `${environment.apiUrl}/api/Visitantes`;
+
+  /**
+   * Verifica si un número de documento ya existe en la base de datos.
+   * @param numero - El número de documento a verificar.
+   * @returns Un `Observable<boolean>` que emite `true` si el documento existe, `false` en caso contrario.
+   */
+  verificarNumeroDocumento(numero: string | number): Observable<boolean> {
+    const url = `${this.baseUrl}/verificar-documento/${numero}`;
+    return this.http.get<{ existe: boolean }>(url).pipe(
+      map(response => response.existe)
+    );
+  }
+
 
   /**
    * READ: Obtiene una lista paginada y filtrada de visitantes.

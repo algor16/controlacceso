@@ -27,7 +27,7 @@ export class CatalogoCrudComponent implements OnInit {
 
 
   // --- Propiedades del Componente ---
-  public listaItems = signal<CatalogoItem[]>([]);
+  public listaItems = signal<any[]>([]);
   public catalogoForm: FormGroup;
   public currentItemId: number | null = null;
   public itemParaEliminarId: number | null = null;
@@ -49,6 +49,10 @@ export class CatalogoCrudComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    if (this.nombreCatalogo === 'EstadosSolicitud') {
+      this.catalogoForm.addControl('mensaje', this.fb.control(''));
+      this.catalogoForm.addControl('esConsideradaParaRegistro', this.fb.control(false));
+    }
     this.cargarDatos();
   }
 
@@ -57,7 +61,6 @@ export class CatalogoCrudComponent implements OnInit {
   cargarDatos(): void {
     this.catalogosService.getAll(this.nombreCatalogo).subscribe(datos => {
       this.listaItems.set(datos);
-
     });
   }
 
@@ -66,10 +69,10 @@ export class CatalogoCrudComponent implements OnInit {
       this.catalogoForm.markAllAsTouched();
       return;
     }
-    const formData = this.catalogoForm.value;
+    const formData = this.catalogoForm.getRawValue();
 
     if (this.currentItemId) {
-      const itemActualizado: CatalogoItem = { id: this.currentItemId, ...formData };
+      const itemActualizado = { id: this.currentItemId, ...formData };
       this.catalogosService.update(this.nombreCatalogo, this.currentItemId, itemActualizado)
         .pipe(finalize(() => this.resetForm()))
         .subscribe({
@@ -86,9 +89,17 @@ export class CatalogoCrudComponent implements OnInit {
     }
   }
 
-  editar(item: CatalogoItem): void {
+  editar(item: any): void {
     this.currentItemId = item.id;
-    this.catalogoForm.patchValue({ descripcion: item.descripcion });
+    if (this.nombreCatalogo === 'EstadosSolicitud') {
+      this.catalogoForm.patchValue({
+        descripcion: item.descripcion,
+        mensaje: item.mensaje,
+        esConsideradaParaRegistro: item.esConsideradaParaRegistro
+      });
+    } else {
+      this.catalogoForm.patchValue({ descripcion: item.descripcion });
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 

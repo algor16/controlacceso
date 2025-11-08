@@ -3,7 +3,7 @@ import { Routes } from '@angular/router';
 
 export const solicitudesRoutes: Routes = [
   { path: 'solicitud',
-    title: 'Nueva Solicitud',
+    title: 'Solicitudes',
     loadComponent: ()=> import('./solicitud/solicitud'),
    },
    { path: 'visitante',

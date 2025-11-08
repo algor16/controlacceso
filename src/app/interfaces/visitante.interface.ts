@@ -10,6 +10,7 @@ export interface Visitante {
   tipoDocumento: string;
   nivelRiesgo: string;
   estadoVisitante: string;
+  estadoVisitanteId?: number | null;
 }
 
 /**

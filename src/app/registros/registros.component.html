@@ -1,0 +1,140 @@
+<div class="container mx-auto p-4">
+  <h1 class="text-2xl font-bold mb-4">Registro Inteligente de Entrada/Salida</h1>
+
+  @if (sugerenciaResponse(); as response) {
+    <!-- PASO 2: MOSTRAR SUGERENCIAS Y REGISTRAR -->
+    <div class="card bg-base-100 shadow-xl p-6 mt-4">
+      <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" (click)="reset()">✕</button>
+      <h2 class="text-xl font-bold mb-2">Visitante: {{ response.nombreVisitante }}</h2>
+
+      <!-- Alerta de Estado del Visitante -->
+      @switch (response.estadoVisitante) {
+        @case ('Normal') {
+          <div role="alert" class="alert alert-success">
+            <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <span>Estado del Visitante: <strong>{{ response.estadoVisitante }}</strong>. Puede continuar con el registro.</span>
+          </div>
+        }
+        @case ('Suspendido') {
+          <div role="alert" class="alert alert-warning">
+            <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+            <span>Estado del Visitante: <strong>{{ response.estadoVisitante }}</strong>. No se puede registrar el acceso.</span>
+          </div>
+        }
+        @case ('Bloqueado') {
+          <div role="alert" class="alert alert-error">
+            <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <span>Estado del Visitante: <strong>{{ response.estadoVisitante }}</strong>. Acceso denegado.</span>
+          </div>
+        }
+      }
+
+      <!-- Mensaje de Estado de la Solicitud -->
+      @if (response.mensaje) {
+        <div role="alert" class="alert alert-info mt-4">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          <span>{{ response.mensaje }}</span>
+        </div>
+      }
+
+      <div class="divider"></div>
+
+      <!-- El formulario de acciones solo se muestra si el estado es Normal -->
+      @if (response.estadoVisitante === 'Normal') {
+        <form [formGroup]="accionForm" (ngSubmit)="registrar()">
+          @if (response.accionesSugeridas.length > 0) {
+            <p class="mb-4 font-semibold">Acción sugerida (puede cambiarla si es necesario):</p>
+            <div class="flex w-full items-center">
+
+              @if (getAccion('Ingreso'); as ingresoAction) {
+                <div class="card bg-base-200 rounded-box grid flex-grow place-items-center p-4">
+                  <label class="flex cursor-pointer items-center space-x-4">
+                    <span class="text-lg font-bold text-success">ENTRADA</span>
+                    <input type="radio" name="accionSeleccionada" formControlName="accionSeleccionada" class="radio radio-success"
+                           [value]="getAccionValue(ingresoAction)" />
+                  </label>
+                </div>
+              }
+
+              @if (getAccion('Ingreso') && getAccion('Salida')) {
+                <div class="divider divider-horizontal">O</div>
+              }
+
+              @if (getAccion('Salida'); as salidaAction) {
+                <div class="card bg-base-200 rounded-box grid flex-grow place-items-center p-4">
+                  <label class="flex cursor-pointer items-center space-x-4">
+                    <span class="text-lg font-bold text-warning">SALIDA</span>
+                    <input type="radio" name="accionSeleccionada" formControlName="accionSeleccionada" class="radio radio-warning"
+                           [value]="getAccionValue(salidaAction)" />
+                  </label>
+                </div>
+              }
+            </div>
+          }
+
+          <div class="form-control w-full mt-4">
+            <label class="label">
+              <span class="label-text">Observación</span>
+              @if (accionForm.controls.observacion.hasValidator(Validators.required)) {
+                <span class="label-text-alt text-error font-bold"> (Requerido)</span>
+              }
+            </label>
+            <textarea formControlName="observacion" class="textarea textarea-bordered w-full"
+                      [class.textarea-error]="accionForm.controls.observacion.invalid && accionForm.controls.observacion.touched"
+                      rows="3"></textarea>
+            @if (accionForm.controls.observacion.invalid && accionForm.controls.observacion.touched) {
+              <div class="label">
+                <span class="label-text-alt text-error">Debe ingresar una observación (ej: quién autoriza).</span>
+              </div>
+            }
+          </div>
+
+          <div class="card-actions justify-end mt-6">
+            <button type="submit" class="btn btn-primary" [disabled]="accionForm.invalid">Registrar Acción</button>
+          </div>
+        </form>
+      }
+    </div>
+  } @else {
+    <!-- PASO 1: BÚSQUEDA POR DOCUMENTO -->
+    <div class="card bg-base-100 shadow-xl p-6">
+      <form [formGroup]="busquedaForm" (ngSubmit)="buscarSugerencias()">
+        <div class="form-control w-full">
+          <label class="label">
+            <span class="label-text">Número de Documento del Visitante</span>
+          </label>
+          <input type="text" placeholder="Escriba el número de documento" formControlName="numeroDocumento"
+            class="input input-bordered w-full" [class.input-error]="busquedaForm.controls.numeroDocumento.invalid && busquedaForm.controls.numeroDocumento.touched" />
+          @if (busquedaForm.controls.numeroDocumento.invalid && busquedaForm.controls.numeroDocumento.touched) {
+            <div class="label">
+              <span class="label-text-alt text-error">Debe ingresar un número válido.</span>
+            </div>
+          }
+        </div>
+        <div class="card-actions justify-end mt-4">
+          <button type="submit" class="btn btn-primary" [disabled]="busquedaForm.invalid || isLoading()">
+            @if(isLoading()) {
+              <span class="loading loading-spinner"></span>
+            }
+            {{ isLoading() ? 'Buscando...' : 'Buscar' }}
+          </button>
+        </div>
+      </form>
+      @if (errorMensaje()) {
+        <div role="alert" class="alert alert-error mt-4">
+          <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          <span>{{ errorMensaje() }}</span>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Toast de éxito -->
+  <div class="toast toast-top toast-end">
+    @if (registroExitoso()) {
+      <div class="alert alert-success">
+        <span>Registro guardado exitosamente.</span>
+      </div>
+    }
+  </div>
+</div>

@@ -1,14 +1,15 @@
 import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Subject, Subscription } from 'rxjs';
-import { debounceTime, distinctUntilChanged, tap } from 'rxjs/operators';
+import { AbstractControl, AsyncValidatorFn, FormBuilder, FormGroup, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
+import { Observable, Subject, Subscription, of } from 'rxjs';
+import { debounceTime, distinctUntilChanged, switchMap, map, catchError, tap } from 'rxjs/operators';
 
 import { VisitantesService } from '../../services/visitantes'; // Ajusta la ruta si es necesario
 import { UpsertVisitante, Visitante } from '../../interfaces/visitante.interface';
 import { PaginatedResponse } from '../../interfaces/paginated-response.interface';
 import { CatalogosService } from '../../services/catalogos.service';
 import { CatalogoItem } from '../../interfaces/catalogo.interface';
+import { HttpErrorResponse } from '@angular/common/http';
 
 type AlertStatus = 'success' | 'error' | 'info' | 'warning';
 
@@ -55,45 +56,53 @@ export default class VisitanteComponent implements OnInit, OnDestroy {
       busquedaGeneral: [''],
       numeroDocumento: ['']
     });
-     // ✅ Inicializa el formulario para el modal
+
     this.visitanteForm = this.fb.group({
       nombre: ['', Validators.required],
       apellido: ['', Validators.required],
       cargo: ['', Validators.required],
       tipoDocumentoId: [null, Validators.required],
-      numero: [null, Validators.required],
+      numero: [null, { validators: [Validators.required], asyncValidators: [this.numeroDocumentoValidator()], updateOn: 'blur' }],
       nivelRiesgoId: [null, Validators.required],
       estadoVisitanteId: [null, Validators.required],
     });
   }
 
   ngOnInit(): void {
-    // Carga los datos iniciales al entrar al componente
     this.cargarVisitantes();
     this.cargarCatalogos();
-    // Configura la búsqueda con debounce de 500ms
     this.searchSubscription = this.searchForm.valueChanges.pipe(
-      // Espera 500ms después de que el usuario deja de teclear
       debounceTime(500),
-      // No hace nada si el valor nuevo es igual al anterior
       distinctUntilChanged((prev, curr) => JSON.stringify(prev) === JSON.stringify(curr)),
-      // Opcional: Muestra un indicador de carga mientras se busca
       tap(() => this.paginatedResponse.set(null))
     ).subscribe(() => {
-      // Vuelve a la página 1 cada vez que se realiza una nueva búsqueda
       this.cargarVisitantes(1);
     });
   }
 
   ngOnDestroy(): void {
-    // Limpia la suscripción para evitar fugas de memoria
     this.searchSubscription?.unsubscribe();
   }
 
-  /**
-   * Carga los visitantes desde el servicio usando los filtros y la paginación actual.
-   * @param page - El número de página a cargar.
-   */
+  numeroDocumentoValidator(): AsyncValidatorFn {
+    return (control: AbstractControl): Observable<ValidationErrors | null> => {
+      if (!control.value || this.isEditMode()) {
+        return of(null);
+      }
+
+      return of(control.value).pipe(
+        debounceTime(500),
+        distinctUntilChanged(),
+        switchMap(value => 
+          this.visitantesService.verificarNumeroDocumento(value).pipe(
+            map(existe => (existe ? { documentoExistente: true } : null)),
+            catchError(() => of(null)) // En caso de error en la API, no bloquear el formulario
+          )
+        )
+      );
+    };
+  }
+
   cargarVisitantes(page: number = 1): void {
     const { busquedaGeneral, numeroDocumento } = this.searchForm.value;
 
@@ -103,52 +112,42 @@ export default class VisitanteComponent implements OnInit, OnDestroy {
       });
   }
 
-   // ✅ Nuevo método para cargar los datos de los catálogos
   cargarCatalogos(): void {
     this.catalogosService.getAll('TiposDocumento').subscribe(data => this.tiposDocumento.set(data));
     this.catalogosService.getAll('NivelesRiesgo').subscribe(data => this.nivelesRiesgo.set(data));
-    this.catalogosService.getAll('EstadosVisitante').subscribe(data => this.estadosVisitante.set(data));
+    this.catalogosService.getAll('EstadosVisitante').subscribe(data => {
+      const estadosFiltrados = data.filter(estado => estado.descripcion !== 'Inactivo');
+      this.estadosVisitante.set(estadosFiltrados);
+    });
   }
-  /**
-   * Se llama cada vez que el usuario escribe en los campos de búsqueda.
-   */
+
   onSearchInput(): void {
     this.searchTerms.next();
   }
 
-  /**
-   * Cambia a la página anterior o siguiente.
-   * @param page - El número de la nueva página.
-   */
   cambiarPagina(page: number): void {
     if (page > 0 && (!this.paginatedResponse() || page <= this.paginatedResponse()!.totalPaginas)) {
       this.cargarVisitantes(page);
     }
   }
 
-  /**
-   * Abre el modal en modo "Crear".
-   * Resetea el formulario y se prepara para un nuevo registro.
-   */
   abrirModalCrear(): void {
     this.isEditMode.set(false);
     this.visitanteForm.reset();
     this.currentVisitorId = null;
+    this.visitanteForm.get('numero')?.setAsyncValidators(this.numeroDocumentoValidator());
+    this.visitanteForm.get('numero')?.updateValueAndValidity();
     (document.getElementById('visitante_modal') as HTMLDialogElement)?.showModal();
   }
 
-  /**
-   * Abre el modal en modo "Editar".
-   * Carga los datos del visitante seleccionado en el formulario.
-   */
   abrirModalEditar(visitante: Visitante): void {
     this.isEditMode.set(true);
     this.currentVisitorId = visitante.id;
+    this.visitanteForm.get('numero')?.clearAsyncValidators();
+    this.visitanteForm.get('numero')?.updateValueAndValidity();
 
-    // Llama al servicio para obtener los datos completos y editables
     this.visitantesService.getById(visitante.id).subscribe({
       next: (visitanteEditable) => {
-        // Rellena el formulario con los datos recibidos de la API
         this.visitanteForm.setValue({
           nombre: visitanteEditable.nombre,
           apellido: visitanteEditable.apellido,
@@ -158,23 +157,14 @@ export default class VisitanteComponent implements OnInit, OnDestroy {
           nivelRiesgoId: visitanteEditable.nivelRiesgoId,
           estadoVisitanteId: visitanteEditable.estadoVisitanteId,
         });
-
-        // Abre el modal una vez que el formulario está listo
         (document.getElementById('visitante_modal') as HTMLDialogElement)?.showModal();
       },
       error: (err) => {
-        console.error("Error al obtener los datos del visitante para editar:", err);
-        // Aquí podrías mostrar una alerta de error al usuario
+        this.mostrarAlerta(`Error al cargar visitante: ${err.message}`, 'error');
       }
     });
   }
 
-
-
-  /**
-   * Se ejecuta al enviar el formulario del modal.
-   * Decide si crear o actualizar el registro.
-   */
   guardarOActualizarVisitante(): void {
     if (this.visitanteForm.invalid) {
       this.visitanteForm.markAllAsTouched();
@@ -184,43 +174,46 @@ export default class VisitanteComponent implements OnInit, OnDestroy {
     const visitanteData: UpsertVisitante = this.visitanteForm.value;
 
     if (this.isEditMode()) {
-      // --- LÓGICA DE ACTUALIZAR (con su propio subscribe) ---
-      this.visitantesService.update(this.currentVisitorId!, visitanteData)
-        .subscribe({
-          next: () => {
-            this.mostrarAlerta('Visitante actualizado correctamente.', 'success');
-            this.cargarVisitantes(this.paginatedResponse()?.paginaActual || 1);
-            (document.getElementById('visitante_modal') as HTMLDialogElement)?.close();
-          },
-          error: (err) => {
-            this.mostrarAlerta(`Error al actualizar: ${err.message}`, 'error');
+      this.visitantesService.update(this.currentVisitorId!, visitanteData).subscribe({
+        next: () => {
+          this.mostrarAlerta('Visitante actualizado correctamente.', 'success');
+          this.cargarVisitantes(this.paginatedResponse()?.paginaActual || 1);
+          (document.getElementById('visitante_modal') as HTMLDialogElement)?.close();
+          this.visitanteForm.reset();
+        },
+        error: (err: HttpErrorResponse) => {
+          if (err.status === 409) {
+            this.visitanteForm.get('numero')?.setErrors({ documentoExistente: true });
+            this.mostrarAlerta('El número de documento ya pertenece a otro visitante.', 'error');
+          } else {
+            this.mostrarAlerta(`Error al actualizar: ${err.error?.mensaje || err.message}`, 'error');
           }
-        });
+        }
+      });
     } else {
-      // --- LÓGICA DE CREAR (con su propio subscribe) ---
-      this.visitantesService.create(visitanteData)
-        .subscribe({
-          next: () => {
-            this.mostrarAlerta('Visitante creado correctamente.', 'success');
-            this.cargarVisitantes(); // Vuelve a la primera página para ver el nuevo registro
-            (document.getElementById('visitante_modal') as HTMLDialogElement)?.close();
-          },
-          error: (err) => {
-            this.mostrarAlerta(`Error al crear: ${err.message}`, 'error');
+      this.visitantesService.create(visitanteData).subscribe({
+        next: () => {
+          this.mostrarAlerta('Visitante creado correctamente.', 'success');
+          this.cargarVisitantes(1); // Volver a la página 1 para ver el nuevo registro
+          (document.getElementById('visitante_modal') as HTMLDialogElement)?.close();
+          this.visitanteForm.reset();
+        },
+        error: (err: HttpErrorResponse) => {
+          if (err.status === 409) {
+            this.visitanteForm.get('numero')?.setErrors({ documentoExistente: true });
+            this.mostrarAlerta('El número de documento ya está registrado.', 'error');
+          } else {
+            this.mostrarAlerta(`Error al crear: ${err.error?.mensaje || err.message}`, 'error');
           }
-        });
+        }
+      });
     }
-
-    // Reseteamos el formulario al final en ambos casos
-    this.visitanteForm.reset();
   }
 
   mostrarAlerta(mensaje: string, status: AlertStatus): void {
     this.alertMessage.set(mensaje);
     this.alertStatus.set(status);
     this.showAlert.set(true);
-
-    // Ocultar la alerta después de 5 segundos
     setTimeout(() => {
       this.showAlert.set(false);
     }, 5000);
@@ -232,21 +225,19 @@ export default class VisitanteComponent implements OnInit, OnDestroy {
   }
 
   confirmarEliminacion(): void {
-  if (!this.visitanteParaEliminarId) return;
+    if (!this.visitanteParaEliminarId) return;
 
-  this.visitantesService.delete(this.visitanteParaEliminarId).subscribe({
-    next: () => {
-      // Usamos el método que ya tienes para mostrar alertas
-      this.mostrarAlerta('Visitante eliminado correctamente.', 'warning');
-      this.cargarVisitantes(this.paginatedResponse()?.paginaActual || 1); // Recarga la página actual
-    },
-    error: (err) => {
-      this.mostrarAlerta(`Error al eliminar el visitante: ${err.message}`, 'error');
-    },
-    complete: () => {
-      this.visitanteParaEliminarId = null; // Limpia el ID al terminar
-    }
-  });
-}
-
+    this.visitantesService.delete(this.visitanteParaEliminarId).subscribe({
+      next: () => {
+        this.mostrarAlerta('Visitante eliminado correctamente.', 'warning');
+        this.cargarVisitantes(this.paginatedResponse()?.paginaActual || 1);
+      },
+      error: (err) => {
+        this.mostrarAlerta(`Error al eliminar el visitante: ${err.message}`, 'error');
+      },
+      complete: () => {
+        this.visitanteParaEliminarId = null;
+      }
+    });
+  }
 }

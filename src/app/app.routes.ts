@@ -8,8 +8,8 @@ export const routes: Routes = [
     redirectTo: 'catalogos',
     pathMatch: 'full'
   },
-  { path: 'registro',
-    loadChildren: () => import('./catalogos/catalogos.routes').then(m => m.catalogosRoutes),
+  { path: 'registros',
+    loadChildren: () => import('./registros/registros.routes').then(m => m.REGISTROS_ROUTES),
     title: 'Registros',
   },
   { path: 'solicitudes',

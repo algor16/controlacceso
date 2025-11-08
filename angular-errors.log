@@ -1,0 +1,8 @@
+[error] Error: The service was stopped: write EPIPE
+    at X:\Angular\ControlAcceso\node_modules\esbuild\lib\main.js:972:26
+    at responseCallbacks.<computed> (X:\Angular\ControlAcceso\node_modules\esbuild\lib\main.js:601:9)
+    at afterClose (X:\Angular\ControlAcceso\node_modules\esbuild\lib\main.js:592:28)
+    at X:\Angular\ControlAcceso\node_modules\esbuild\lib\main.js:1981:18
+    at onwriteError (node:internal/streams/writable:605:3)
+    at process.processTicksAndRejections (node:internal/process/task_queues:92:21)
+

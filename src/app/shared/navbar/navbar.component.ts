@@ -29,11 +29,24 @@ export class NavbarComponent implements OnInit {
     const temaActual = sw ? 'dark' : 'light';
     this.valorSw.set(sw);
     localStorage.setItem('theme', temaActual);
+    this.aplicarTema(temaActual);
   }
 
   asignarTema() {
-    const temaGuardado = localStorage.getItem('theme') as valorTema || 'light';
-    this.valorSw.set(temaGuardado === 'dark');
+    const temaGuardado = localStorage.getItem('theme') as valorTema;
+    if (temaGuardado) {
+      this.valorSw.set(temaGuardado === 'dark');
+      this.aplicarTema(temaGuardado);
+    } else {
+      const prefiereDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const temaInicial = prefiereDark ? 'dark' : 'light';
+      this.valorSw.set(prefiereDark);
+      this.aplicarTema(temaInicial);
+    }
+  }
+
+  aplicarTema(tema: valorTema) {
+    document.documentElement.setAttribute('data-theme', tema);
   }
 
   closeMenu(detailsElement: HTMLDetailsElement): void {
