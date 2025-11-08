@@ -1,30 +1,41 @@
-
-import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core'; // 1. Importa OnInit
-import { Router, RouterModule, Routes } from '@angular/router';
+// src/app/shared/navbar/navbar.component.ts
+import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
+import { RouterModule } from '@angular/router'; // No borres RouterModule
+import { LayoutService } from '../../services/layout.service'; // <-- Importa el servicio
 
 export type valorTema = 'light' | 'dark';
 
 @Component({
   selector: 'app-navbar',
   standalone: true,
-  imports: [RouterModule],
+  imports: [RouterModule], // <-- RouterModule se queda
   templateUrl: './navbar.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class NavbarComponent implements OnInit {
-  private router = inject(Router);
-  public menuItems = signal<Routes>([]);
+
+  // Inyecta el servicio de layout
+  public layoutService = inject(LayoutService);
+
   valorSw = signal<boolean>(false);
+
+  // BORRAMOS:
+  // private router = inject(Router);
+  // public menuItems = signal<Routes>([]);
+  // Y todo el .set(this.router.config...) de ngOnInit
 
   ngOnInit(): void {
     this.asignarTema();
-    this.menuItems.set(
-      this.router.config
-        .filter(route => route && route.path && route.title)
-    );
-    console.log(this.menuItems());
+    // La lógica del menú se fue al sidebar
   }
 
+  // Esta función es NUEVA. Llama al servicio.
+  toggleSidebar(): void {
+    this.layoutService.toggleSidebar();
+  }
+
+  // ... (El resto de tus funciones: guardarTema, asignarTema, aplicarTema... se quedan igual) ...
+  // ... (Asegúrate de copiar aquí el resto de tus funciones de tema) ...
   guardarTema(sw: boolean) {
     const temaActual = sw ? 'dark' : 'light';
     this.valorSw.set(sw);
@@ -48,10 +59,4 @@ export class NavbarComponent implements OnInit {
   aplicarTema(tema: valorTema) {
     document.documentElement.setAttribute('data-theme', tema);
   }
-
-  closeMenu(detailsElement: HTMLDetailsElement): void {
-    // Esto quita el atributo 'open' del elemento <details>, cerrándolo.
-    detailsElement.open = false;
-  }
-
 }

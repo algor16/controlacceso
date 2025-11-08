@@ -3,3 +3,9 @@
 @plugin "daisyui";
 @plugin "daisyui" {
    themes: light --default, dark --prefersdark;}
+/* Añade esto para animar el sidebar */
+.transition-all {
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 300ms;
+}

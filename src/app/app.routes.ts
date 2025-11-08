@@ -1,11 +1,11 @@
 import { Routes } from '@angular/router';
 import { catalogosRoutes } from './catalogos/catalogos.routes';
-import { CatalogosLayoutComponent } from './shared/layout/catalogos-layout.component';
+//import { CatalogosLayoutComponent } from './shared/layout/catalogos-layout.component';
 import { solicitudesRoutes } from './solicitudes/solicitudes.routes';
 
 export const routes: Routes = [
   { path: '',
-    redirectTo: 'catalogos',
+    redirectTo: 'registros',
     pathMatch: 'full'
   },
   { path: 'registros',
@@ -13,12 +13,12 @@ export const routes: Routes = [
     title: 'Registros',
   },
   { path: 'solicitudes',
-    component: CatalogosLayoutComponent,
+    //component: CatalogosLayoutComponent,
     children: solicitudesRoutes,
     title: 'Solicitudes',
   },
   { path: 'catalogos',
-    component: CatalogosLayoutComponent,
+    //component: CatalogosLayoutComponent,
     children: catalogosRoutes,
     title: 'Catalogos',
   },

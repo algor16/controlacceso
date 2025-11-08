@@ -1,0 +1,44 @@
+<aside
+  class="flex h-screen flex-col bg-base-200 text-base-content transition-all duration-300 ease-in-out"
+  [class.w-80]="!layoutService.isSidebarCollapsed()"
+  [class.w-20]="layoutService.isSidebarCollapsed()">
+
+  <div class="flex h-16 items-center px-4">
+    <a class="inline-flex items-baseline text-xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-green-500">
+      <span class="text-lg">Puerto</span>
+      @if (!layoutService.isSidebarCollapsed()) {
+        <span class="text-2xl ml-1">PIMSA</span>
+      }
+    </a>
+  </div>
+
+  <ul class="menu p-4">
+    @for (item of menuItems(); track item.path) {
+
+      @if (item.isHeader) {
+        <li class="menu-title" [class.hidden]="layoutService.isSidebarCollapsed()">
+          <span>{{ item.title }}</span>
+        </li>
+      } @else {
+        <li>
+          <a
+            [routerLink]="item.path"
+            routerLinkActive="active"
+            [routerLinkActiveOptions]="{exact: true}"
+            [title]="item.title" class="flex justify-start">
+
+            @if (item.icon) {
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" [attr.d]="item.icon" />
+              </svg>
+            }
+
+            @if (!layoutService.isSidebarCollapsed()) {
+              <span class="ml-2">{{ item.title }}</span>
+            }
+          </a>
+        </li>
+      }
+    }
+  </ul>
+</aside>
