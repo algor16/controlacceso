@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { CatalogoItem } from '../interfaces/catalogo.interface';
 import { environment } from '../../environments/environment';
@@ -28,10 +28,29 @@ export class CatalogosService {
   /**
    * READ: Obtiene todos los items de un catálogo.
    * @param catalogo - Nombre del endpoint.
+   * @param params - Parámetros de consulta opcionales.
    */
-  getAll(catalogo: string): Observable<CatalogoItem[]> {
+  getAll(catalogo: string, params?: HttpParams): Observable<CatalogoItem[]> {
     const url = `${this.baseUrl}/${catalogo}`;
+    return this.http.get<CatalogoItem[]>(url, { params });
+  }
+
+  /**
+   * READ: Obtiene solo los destinos activos.
+   */
+  getDestinosActivos(): Observable<CatalogoItem[]> {
+    const url = `${this.baseUrl}/Destinos/activos`;
     return this.http.get<CatalogoItem[]>(url);
+  }
+
+  /**
+   * CHECK USAGE: Verifica si un item de catálogo está en uso.
+   * @param catalogo - Nombre del endpoint.
+   * @param id - El ID del item a verificar.
+   */
+  enUso(catalogo: string, id: number): Observable<boolean> {
+    const url = `${this.baseUrl}/${catalogo}/${id}/en-uso`;
+    return this.http.get<boolean>(url);
   }
 
   /**
@@ -56,12 +75,22 @@ export class CatalogosService {
   }
 
   /**
-   * DELETE: Elimina un item por su ID.
+   * DELETE: Elimina un item por su ID (o lo desactiva si es borrado lógico).
    * @param catalogo - Nombre del endpoint.
    * @param id - El ID del item a eliminar.
    */
   delete(catalogo: string, id: number): Observable<void> {
     const url = `${this.baseUrl}/${catalogo}/${id}`;
     return this.http.delete<void>(url);
+  }
+
+  /**
+   * REACTIVATE: Reactiva un item con borrado lógico.
+   * @param catalogo - Nombre del endpoint.
+   * @param id - El ID del item a reactivar.
+   */
+  reactivar(catalogo: string, id: number): Observable<void> {
+    const url = `${this.baseUrl}/${catalogo}/${id}/reactivar`;
+    return this.http.post<void>(url, {});
   }
 }

@@ -32,6 +32,7 @@ export default class VisitanteComponent implements OnInit, OnDestroy {
   public tiposDocumento = signal<CatalogoItem[]>([]);
   public nivelesRiesgo = signal<CatalogoItem[]>([]);
   public estadosVisitante = signal<CatalogoItem[]>([]);
+  public tiposVisitante = signal<CatalogoItem[]>([]);
 
   // --- Formulario de Búsqueda ---
   public searchForm: FormGroup;
@@ -65,6 +66,7 @@ export default class VisitanteComponent implements OnInit, OnDestroy {
       numero: [null, { validators: [Validators.required], asyncValidators: [this.numeroDocumentoValidator()], updateOn: 'blur' }],
       nivelRiesgoId: [null, Validators.required],
       estadoVisitanteId: [null, Validators.required],
+      tipoVisitanteId: [null],
     });
   }
 
@@ -115,6 +117,7 @@ export default class VisitanteComponent implements OnInit, OnDestroy {
   cargarCatalogos(): void {
     this.catalogosService.getAll('TiposDocumento').subscribe(data => this.tiposDocumento.set(data));
     this.catalogosService.getAll('NivelesRiesgo').subscribe(data => this.nivelesRiesgo.set(data));
+    this.catalogosService.getAll('TiposVisitante').subscribe(data => this.tiposVisitante.set(data));
     this.catalogosService.getAll('EstadosVisitante').subscribe(data => {
       const estadosFiltrados = data.filter(estado => estado.descripcion !== 'Inactivo');
       this.estadosVisitante.set(estadosFiltrados);
@@ -148,7 +151,7 @@ export default class VisitanteComponent implements OnInit, OnDestroy {
 
     this.visitantesService.getById(visitante.id).subscribe({
       next: (visitanteEditable) => {
-        this.visitanteForm.setValue({
+        this.visitanteForm.patchValue({
           nombre: visitanteEditable.nombre,
           apellido: visitanteEditable.apellido,
           cargo: visitanteEditable.cargo,
@@ -156,6 +159,7 @@ export default class VisitanteComponent implements OnInit, OnDestroy {
           numero: visitanteEditable.numero,
           nivelRiesgoId: visitanteEditable.nivelRiesgoId,
           estadoVisitanteId: visitanteEditable.estadoVisitanteId,
+          tipoVisitanteId: visitanteEditable.tipoVisitanteId,
         });
         (document.getElementById('visitante_modal') as HTMLDialogElement)?.showModal();
       },

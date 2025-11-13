@@ -174,7 +174,7 @@ export default class SolicitudComponent implements OnInit, OnDestroy {
   }
 
   cargarCatalogos(): void {
-    this.catalogosService.getAll('Destinos').subscribe(data => this.destinos.set(data));
+    this.catalogosService.getDestinosActivos().subscribe(data => this.destinos.set(data));
     this.catalogosService.getAll('EstadosSolicitud').subscribe(data => {
       const filteredData = data.filter(item => item.descripcion !== 'Anulada');
       this.estadosSolicitud.set(filteredData);

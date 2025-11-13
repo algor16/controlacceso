@@ -18,6 +18,10 @@ export const catalogosRoutes: Routes = [
     title: 'Tipos de Registro' ,
     loadComponent: ()=> import('./tiposRegistro/tipos-registro.component'),
    },
+  { path: 'tipos-visitante',
+    title: 'Tipos de Visitante',
+    loadComponent: ()=> import('./tiposVisitante/tipos-visitante.component'),
+   },
    { path: 'destinos',
     title: 'Destinos',
     loadComponent: ()=> import('./destinos/destinos.component')

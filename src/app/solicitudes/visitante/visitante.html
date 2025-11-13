@@ -42,6 +42,7 @@
             <th>ID</th>
             <th>Nombre Completo</th>
             <th>Cargo</th>
+            <th>Tipo Visitante</th>
             <th>Tipo Documento</th>
             <th>Nivel Riesgo</th>
             <th>Estado</th>
@@ -54,6 +55,13 @@
               <td>{{ visitante.numero }}</td>
               <td>{{ visitante.nombreCompleto }}</td>
               <td>{{ visitante.cargo }}</td>
+              <td>
+                @if(visitante.tipoVisitante) {
+                  <div class="badge badge-ghost">{{ visitante.tipoVisitante }}</div>
+                } @else {
+                  <span class="text-xs text-gray-400">N/A</span>
+                }
+              </td>
               <td><div class="badge badge-neutral">{{ visitante.tipoDocumento }}</div></td>
               <td><div class="badge badge-warning">{{ visitante.nivelRiesgo }}</div></td>
               <td><div class="badge badge-success">{{ visitante.estadoVisitante }}</div></td>
@@ -68,7 +76,7 @@
             </tr>
           } @empty {
             <tr>
-              <td colspan="7" class="text-center p-4">No se encontraron visitantes.</td>
+              <td colspan="8" class="text-center p-4">No se encontraron visitantes.</td>
             </tr>
           }
         </tbody>
@@ -161,6 +169,17 @@
               Este número de documento ya está registrado.
             </div>
           }
+        </div>
+
+        <!-- Tipo de Visitante (Opcional) -->
+        <div class="form-control">
+          <label class="label"><span class="label-text">Tipo de Visitante</span></label>
+           <select formControlName="tipoVisitanteId" class="select select-bordered">
+            <option [ngValue]="null">Ninguno</option>
+            @for(tipo of tiposVisitante(); track tipo.id) {
+              <option [ngValue]="tipo.id">{{ tipo.descripcion }}</option>
+            }
+          </select>
         </div>
 
         <!-- Cargo -->

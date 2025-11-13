@@ -11,6 +11,8 @@ export interface Visitante {
   nivelRiesgo: string;
   estadoVisitante: string;
   estadoVisitanteId?: number | null;
+  tipoVisitante?: string | null;
+  tipoVisitanteId?: number | null;
 }
 
 /**
@@ -24,6 +26,7 @@ export interface UpsertVisitante {
   cargo: string;
   nivelRiesgoId: number;
   estadoVisitanteId: number;
+  tipoVisitanteId?: number | null;
 }
 
 export interface VisitanteEditable {
@@ -35,4 +38,5 @@ export interface VisitanteEditable {
   tipoDocumentoId: number;
   nivelRiesgoId: number;
   estadoVisitanteId: number;
+  tipoVisitanteId?: number | null;
 }
