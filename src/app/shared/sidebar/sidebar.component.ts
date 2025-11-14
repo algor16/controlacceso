@@ -78,6 +78,7 @@ export default class SidebarComponent {
     { title: 'Estados Visitante', path: '/catalogos/estados-visitante', icon: 'M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z' },
     { title: 'Clases de Vehículos', path: '/catalogos/clases-vehiculos', icon: 'M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2h-2m-4 2a2 2 0 100-4 2 2 0 000 4zm12-8v-2a1 1 0 00-1-1h-2.586a1 1 0 00-.707.293l-3.414 3.414a1 1 0 00.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4z' },
     { title: 'Niveles de Riesgo', path: '/catalogos/niveles-riesgo', icon: 'M13 10V3L4 14h7v7l9-11h-7z' },
+    { title: 'Motivos', path: '/catalogos/motivos', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01' },
     { title: 'Roles', path: '/catalogos/roles', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' },
   ]);
 }

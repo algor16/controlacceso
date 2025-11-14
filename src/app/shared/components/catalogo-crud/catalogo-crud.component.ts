@@ -1,12 +1,10 @@
 import { Component, Input, OnInit, inject, signal  } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, TitleCasePipe } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { finalize } from 'rxjs';
 import { CatalogosService } from '../../../services/catalogos.service';
 import { CatalogoItem } from '../../../interfaces/catalogo.interface';
-
-// Definimos un tipo para los estados de alerta
-type AlertStatus = 'success' | 'error' | 'info' | 'warning';
+import Swal, { SweetAlertResult } from 'sweetalert2';
 
 @Component({
   selector: 'app-catalogo-crud', // Este es el nombre de la etiqueta que usaremos
@@ -24,18 +22,12 @@ export class CatalogoCrudComponent implements OnInit {
   private fb = inject(FormBuilder);
   private catalogosService = inject(CatalogosService);
 
-
-
   // --- Propiedades del Componente ---
   public listaItems = signal<any[]>([]);
   public catalogoForm: FormGroup;
   public currentItemId: number | null = null;
-  public itemParaEliminarId: number | null = null;
-
-  // --- Propiedades para las Alertas ---
-  public showAlert = false;
-  public alertMessage = '';
-  public alertStatus: AlertStatus = 'info';
+  public loading: boolean = true;
+  public errorMessage: string | null = null;
 
   constructor() {
     this.catalogoForm = this.fb.group({
@@ -44,7 +36,8 @@ export class CatalogoCrudComponent implements OnInit {
         Validators.minLength(3),
         Validators.maxLength(50),
         Validators.pattern('[A-Za-z][A-Za-z0-9\\s\\-]*')
-      ]]
+      ]],
+      activo: [true] // Añadimos el control 'activo'
     });
   }
 
@@ -59,8 +52,18 @@ export class CatalogoCrudComponent implements OnInit {
   // --- Métodos CRUD (usan la propiedad 'nombreCatalogo' del Input) ---
 
   cargarDatos(): void {
-    this.catalogosService.getAll(this.nombreCatalogo).subscribe(datos => {
-      this.listaItems.set(datos);
+    this.loading = true;
+    this.errorMessage = null;
+    this.catalogosService.getAll(this.nombreCatalogo).subscribe({
+      next: (datos) => {
+        this.listaItems.set(datos);
+        this.loading = false;
+      },
+      error: (err) => {
+        console.error('Error al cargar datos del catálogo', err);
+        this.errorMessage = 'Error al cargar los datos del catálogo.';
+        this.loading = false;
+      }
     });
   }
 
@@ -76,65 +79,89 @@ export class CatalogoCrudComponent implements OnInit {
       this.catalogosService.update(this.nombreCatalogo, this.currentItemId, itemActualizado)
         .pipe(finalize(() => this.resetForm()))
         .subscribe({
-          next: () => this.mostrarAlerta('Registro actualizado correctamente.', 'success'),
-          error: (err) => this.mostrarAlerta(`Error: ${err.message}`, 'error')
+          next: () => Swal.fire('Actualizado', 'El registro ha sido actualizado.', 'success'),
+          error: (err) => {
+            console.error('Error al actualizar registro', err);
+            Swal.fire('Error', `Hubo un error al actualizar el registro: ${err.message || err.error?.message || err.statusText}`, 'error');
+          }
         });
     } else {
       this.catalogosService.create(this.nombreCatalogo, formData)
         .pipe(finalize(() => this.resetForm()))
         .subscribe({
-          next: () => this.mostrarAlerta('Registro agregado correctamente.', 'success'),
-          error: (err) => this.mostrarAlerta(`Error: ${err.message}`, 'error')
+          next: () => Swal.fire('Creado', 'El registro ha sido creado.', 'success'),
+          error: (err) => {
+            console.error('Error al crear registro', err);
+            Swal.fire('Error', `Hubo un error al crear el registro: ${err.message || err.error?.message || err.statusText}`, 'error');
+          }
         });
     }
   }
 
   editar(item: any): void {
     this.currentItemId = item.id;
-    if (this.nombreCatalogo === 'EstadosSolicitud') {
-      this.catalogoForm.patchValue({
-        descripcion: item.descripcion,
-        mensaje: item.mensaje,
-        esConsideradaParaRegistro: item.esConsideradaParaRegistro
-      });
-    } else {
-      this.catalogoForm.patchValue({ descripcion: item.descripcion });
-    }
+    this.catalogoForm.patchValue(item); // PatchValue para manejar campos opcionales
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  prepararEliminacion(id: number): void {
-    this.itemParaEliminarId = id;
-    (document.getElementById('delete_modal_' + this.nombreCatalogo) as HTMLDialogElement)?.showModal();
-  }
-
-  confirmarEliminacion(): void {
-    if (this.itemParaEliminarId) {
-      this.catalogosService.delete(this.nombreCatalogo, this.itemParaEliminarId).subscribe({
-        next: () => {
-          this.mostrarAlerta('Registro eliminado correctamente.', 'warning');
-          this.cargarDatos();
-        },
-        error: (err) => this.mostrarAlerta(`Error al eliminar: ${err.message}`, 'error')
-      });
-    }
+  eliminar(id: number): void {
+    Swal.fire({
+      title: '¿Estás seguro?',
+      text: 'No podrás revertir esto!',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Sí, eliminar!',
+      cancelButtonText: 'Cancelar'
+    }).then((result: SweetAlertResult) => {
+      if (result.isConfirmed) {
+        this.catalogosService.delete(this.nombreCatalogo, id).subscribe({
+          next: () => {
+            Swal.fire('Eliminado', 'El registro ha sido eliminado.', 'success');
+            this.cargarDatos();
+          },
+          error: (err) => {
+            console.error('Error al eliminar registro', err);
+            Swal.fire('Error', `Hubo un error al eliminar el registro: ${err.message || err.error?.message || err.statusText}`, 'error');
+          }
+        });
+      }
+    });
   }
 
   // --- Métodos Auxiliares ---
   resetForm(): void {
-    this.catalogoForm.reset();
+    this.catalogoForm.reset({ activo: true }); // Resetear con valor por defecto para 'activo'
     this.currentItemId = null;
     this.cargarDatos();
   }
 
-  mostrarAlerta(mensaje: string, status: AlertStatus): void {
-    this.alertMessage = mensaje;
-    this.alertStatus = status;
-    this.showAlert = true;
-    setTimeout(() => { this.showAlert = false; }, 5000);
+  // Helper para validación de formularios
+  isValidField(field: string): boolean | null {
+    const control = this.catalogoForm.get(field);
+    return control ? control.errors && control.touched : null;
   }
 
-  get descripcion() {
-    return this.catalogoForm.get('descripcion');
+  getFieldError(field: string): string | null {
+    const control = this.catalogoForm.get(field);
+    if (!control || !control.errors) {
+      return null;
+    }
+
+    const errors = control.errors;
+    for (const key of Object.keys(errors)) {
+      switch (key) {
+        case 'required':
+          return 'Este campo es requerido.';
+        case 'minlength':
+          return `Mínimo ${errors['minlength'].requiredLength} caracteres.`;
+        case 'maxlength':
+          return `Máximo ${errors['maxlength'].requiredLength} caracteres.`;
+        case 'pattern':
+          return 'Formato inválido. Solo letras, números, espacios y guiones.';
+      }
+    }
+    return 'Error desconocido';
   }
 }

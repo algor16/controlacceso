@@ -1,20 +1,35 @@
 <div class="container mx-auto p-4">
-    <h1 class="text-3xl font-bold mb-6 text-center">{{ title }}</h1>
+    <h1 class="text-3xl font-bold mb-6 text-center">Gestión de Motivos</h1>
 
     <!-- Formulario de Creación/Edición -->
     <div class="bg-base-200 shadow-xl rounded-lg p-6 mb-8">
-        <h2 class="text-2xl font-semibold mb-4">{{ currentItemId ? 'Editar' : 'Crear' }}</h2>
-        <form [formGroup]="catalogoForm" (ngSubmit)="guardarOActualizar()" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <h2 class="text-2xl font-semibold mb-4">{{ isEditMode ? 'Editar' : 'Crear' }}</h2>
+        <form [formGroup]="motivoForm" (ngSubmit)="onSave()" class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <!-- Descripción -->
             <div class="form-control">
                 <label class="label">
                     <span class="label-text">Descripción</span>
                 </label>
-                <input type="text" placeholder="Descripción del destino" formControlName="descripcion"
+                <input type="text" placeholder="Descripción del motivo" formControlName="descripcion"
                     class="input input-bordered w-full"
                     [ngClass]="{'input-error': isValidField('descripcion')}" />
                 <label class="label" *ngIf="isValidField('descripcion')">
                     <span class="label-text-alt text-error">{{ getFieldError('descripcion') }}</span>
+                </label>
+            </div>
+
+            <!-- Tipo de Motivo -->
+            <div class="form-control">
+                <label class="label">
+                    <span class="label-text">Tipo</span>
+                </label>
+                <select formControlName="tipo" class="select select-bordered w-full"
+                    [ngClass]="{'select-error': isValidField('tipo')}">
+                    <option value="" disabled>Seleccione un tipo</option>
+                    <option *ngFor="let tipo of tipoMotivoOptions" [value]="tipo">{{ tipo | titlecase }}</option>
+                </select>
+                <label class="label" *ngIf="isValidField('tipo')">
+                    <span class="label-text-alt text-error">{{ getFieldError('tipo') }}</span>
                 </label>
             </div>
 
@@ -29,32 +44,20 @@
             <!-- Botones de acción -->
             <div class="col-span-1 md:col-span-2 flex justify-end gap-2 mt-4">
                 <button type="button" class="btn btn-ghost" (click)="resetForm()">Cancelar</button>
-                <button type="submit" class="btn btn-primary" [disabled]="catalogoForm.invalid">
-                    {{ currentItemId ? 'Actualizar' : 'Crear' }}
+                <button type="submit" class="btn btn-primary" [disabled]="motivoForm.invalid">
+                    {{ isEditMode ? 'Actualizar' : 'Crear' }}
                 </button>
             </div>
         </form>
     </div>
 
-    <!-- Tabla de Destinos -->
+    <!-- Tabla de Motivos -->
     <div class="bg-base-200 shadow-xl rounded-lg p-6">
-        <h2 class="text-2xl font-semibold mb-4">Listado de Destinos</h2>
-
-        <!-- Filtro de estado -->
-        <div class="mb-4 p-4 border border-base-300 rounded-box">
-            <form [formGroup]="filtroForm">
-                <span class="label-text mr-4">Mostrar:</span>
-                <div class="join">
-                    <input class="join-item btn" type="radio" name="estado" aria-label="Activos" value="activos" formControlName="estado" />
-                    <input class="join-item btn" type="radio" name="estado" aria-label="Inactivos" value="inactivos" formControlName="estado" />
-                    <input class="join-item btn" type="radio" name="estado" aria-label="Todos" value="todos" formControlName="estado" />
-                </div>
-            </form>
-        </div>
+        <h2 class="text-2xl font-semibold mb-4">Listado de Motivos</h2>
 
         <div *ngIf="loading" class="text-center py-4">
             <span class="loading loading-spinner loading-lg"></span>
-            <p>Cargando destinos...</p>
+            <p>Cargando motivos...</p>
         </div>
 
         <div *ngIf="errorMessage" class="alert alert-error shadow-lg">
@@ -68,28 +71,31 @@
             </div>
         </div>
 
-        <div class="overflow-x-auto" *ngIf="!loading && !errorMessage && listaItems().length > 0">
+        <div class="overflow-x-auto" *ngIf="!loading && !errorMessage && motivos.length > 0">
             <table class="table w-full">
                 <thead>
                     <tr>
                         <th>ID</th>
                         <th>Descripción</th>
+                        <th>Tipo</th>
                         <th>Activo</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr *ngFor="let item of listaItems()">
-                        <td>{{ item.id }}</td>
-                        <td>{{ item.descripcion }}</td>
+                    <tr *ngFor="let motivo of motivos">
+                        <td>{{ motivo.id }}</td>
+                        <td>{{ motivo.descripcion }}</td>
+                        <td>{{ motivo.tipo | titlecase }}</td>
                         <td>
-                            <input type="checkbox" class="toggle toggle-sm toggle-primary" [checked]="item.activo" disabled />
+                            <input type="checkbox" class="toggle toggle-sm toggle-primary" [checked]="motivo.activo"
+                                disabled />
                         </td>
                         <td>
-                            <button class="btn btn-outline btn-info btn-sm mr-2" (click)="editar(item)" title="Editar">
+                            <button class="btn btn-outline btn-info btn-sm mr-2" (click)="onEdit(motivo)" title="Editar">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24" ><path d="M5 21h14c1.1 0 2-.9 2-2v-7h-2v7H5V5h7V3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2z"></path><path d="M7 13v3c0 .55.45 1 1 1h3c.27 0 .52-.11.71-.29l9-9a.996.996 0 0 0 0-1.41l-3-3a.996.996 0 0 0-1.41 0l-9.01 8.99A1 1 0 0 0 7 13zm10-7.59L18.59 7 17.5 8.09 15.91 6.5zm-8 8 5.5-5.5 1.59 1.59-5.5 5.5H9z"></path></svg>
                             </button>
-                            <button class="btn btn-outline btn-error btn-sm" (click)="eliminar(item.id)" title="Eliminar">
+                            <button class="btn btn-outline btn-error btn-sm" (click)="onDelete(motivo.id)" title="Eliminar">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="m17,6v-2c0-1.1-.9-2-2-2h-6c-1.1,0-2,.9-2,2v2H2v2h2v12c0,1.1.9,2,2,2h12c1.1,0,2-.9,2-2v-12h2v-2h-5Zm-8-2h6v2h-6v-2Zm9,16H6v-12h12v12Z"></path><path d="M14.29 10.29 12 12.59 9.71 10.29 8.29 11.71 10.59 14 8.29 16.29 9.71 17.71 12 15.41 14.29 17.71 15.71 16.29 13.41 14 15.71 11.71 14.29 10.29z"></path></svg>
                             </button>
                         </td>
@@ -98,8 +104,8 @@
             </table>
         </div>
 
-        <div *ngIf="!loading && !errorMessage && listaItems().length === 0" class="text-center py-4">
-            <p>No hay destinos registrados.</p>
+        <div *ngIf="!loading && !errorMessage && motivos.length === 0" class="text-center py-4">
+            <p>No hay motivos registrados.</p>
         </div>
     </div>
 </div>

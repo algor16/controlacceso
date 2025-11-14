@@ -4,8 +4,7 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { finalize } from 'rxjs';
 import { EstadoSolicitudService } from '../../services/estados-solicitud.service';
 import { EstadoSolicitud } from '../../interfaces/estado-solicitud.interface';
-
-type AlertStatus = 'success' | 'error' | 'info' | 'warning';
+import Swal, { SweetAlertResult } from 'sweetalert2';
 
 @Component({
   selector: 'app-estados-solicitud',
@@ -23,11 +22,9 @@ export default class EstadosSolicitudComponent implements OnInit {
   public listaItems = signal<EstadoSolicitud[]>([]);
   public catalogoForm: FormGroup;
   public currentItemId: number | null = null;
-  public itemParaEliminarId: number | null = null;
 
-  public showAlert = false;
-  public alertMessage = '';
-  public alertStatus: AlertStatus = 'info';
+  public loading: boolean = true;
+  public errorMessage: string | null = null;
 
   constructor() {
     this.catalogoForm = this.fb.group({
@@ -38,7 +35,8 @@ export default class EstadosSolicitudComponent implements OnInit {
         Validators.pattern('[A-Za-z][A-Za-z0-9\s\-]*')
       ]],
       mensaje: [''],
-      esConsideradaParaRegistro: [false]
+      esConsideradaParaRegistro: [false],
+      activo: [true]
     });
   }
 
@@ -47,8 +45,18 @@ export default class EstadosSolicitudComponent implements OnInit {
   }
 
   cargarDatos(): void {
-    this.estadoSolicitudService.getAll().subscribe((datos: EstadoSolicitud[]) => {
-      this.listaItems.set(datos);
+    this.loading = true;
+    this.errorMessage = null;
+    this.estadoSolicitudService.getAll().subscribe({
+      next: (datos: EstadoSolicitud[]) => {
+        this.listaItems.set(datos);
+        this.loading = false;
+      },
+      error: (err) => {
+        console.error('Error al cargar datos del catálogo', err);
+        this.errorMessage = 'Error al cargar los datos del catálogo.';
+        this.loading = false;
+      }
     });
   }
 
@@ -64,60 +72,94 @@ export default class EstadosSolicitudComponent implements OnInit {
       this.estadoSolicitudService.update(this.currentItemId, itemActualizado)
         .pipe(finalize(() => this.resetForm()))
         .subscribe({
-          next: () => this.mostrarAlerta('Registro actualizado correctamente.', 'success'),
-          error: (err: any) => this.mostrarAlerta(`Error: ${err.message}`, 'error')
+          next: () => Swal.fire('Actualizado', 'El registro ha sido actualizado.', 'success'),
+          error: (err: any) => {
+            console.error('Error al actualizar registro', err);
+            Swal.fire('Error', `Hubo un error al actualizar el registro: ${err.message || err.error?.message || err.statusText}`, 'error');
+          }
         });
     } else {
       this.estadoSolicitudService.create(formData)
         .pipe(finalize(() => this.resetForm()))
         .subscribe({
-          next: () => this.mostrarAlerta('Registro agregado correctamente.', 'success'),
-          error: (err: any) => this.mostrarAlerta(`Error: ${err.message}`, 'error')
+          next: () => Swal.fire('Creado', 'El registro ha sido creado.', 'success'),
+          error: (err: any) => {
+            console.error('Error al crear registro', err);
+            Swal.fire('Error', `Hubo un error al crear el registro: ${err.message || err.error?.message || err.statusText}`, 'error');
+          }
         });
     }
   }
 
   editar(item: EstadoSolicitud): void {
     this.currentItemId = item.id;
-    this.catalogoForm.patchValue({
-      descripcion: item.descripcion,
-      mensaje: item.mensaje,
-      esConsideradaParaRegistro: item.esConsideradaParaRegistro
-    });
+    this.catalogoForm.patchValue(item);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  prepararEliminacion(id: number): void {
-    this.itemParaEliminarId = id;
-    (document.getElementById('delete_modal') as HTMLDialogElement)?.showModal();
-  }
-
-  confirmarEliminacion(): void {
-    if (this.itemParaEliminarId) {
-      this.estadoSolicitudService.delete(this.itemParaEliminarId).subscribe({
-        next: () => {
-          this.mostrarAlerta('Registro eliminado correctamente.', 'warning');
-          this.cargarDatos();
-        },
-        error: (err: any) => this.mostrarAlerta(`Error al eliminar: ${err.message}`, 'error')
-      });
-    }
+  eliminar(id: number): void {
+    Swal.fire({
+      title: '¿Estás seguro?',
+      text: 'No podrás revertir esto!',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Sí, eliminar!',
+      cancelButtonText: 'Cancelar'
+    }).then((result: SweetAlertResult) => {
+      if (result.isConfirmed) {
+        this.estadoSolicitudService.delete(id).subscribe({
+          next: () => {
+            Swal.fire('Eliminado', 'El registro ha sido eliminado.', 'success');
+            this.cargarDatos();
+          },
+          error: (err: any) => {
+            console.error('Error al eliminar registro', err);
+            Swal.fire('Error', `Hubo un error al eliminar el registro: ${err.message || err.error?.message || err.statusText}`, 'error');
+          }
+        });
+      }
+    });
   }
 
   resetForm(): void {
-    this.catalogoForm.reset();
+    this.catalogoForm.reset({
+      esConsideradaParaRegistro: false,
+      activo: true
+    });
     this.currentItemId = null;
     this.cargarDatos();
   }
 
-  mostrarAlerta(mensaje: string, status: AlertStatus): void {
-    this.alertMessage = mensaje;
-    this.alertStatus = status;
-    this.showAlert = true;
-    setTimeout(() => { this.showAlert = false; }, 5000);
-  }
-
   get descripcion() {
     return this.catalogoForm.get('descripcion');
+  }
+
+  isValidField(field: string): boolean | null {
+    const control = this.catalogoForm.get(field);
+    return control ? control.errors && control.touched : null;
+  }
+
+  getFieldError(field: string): string | null {
+    const control = this.catalogoForm.get(field);
+    if (!control || !control.errors) {
+      return null;
+    }
+
+    const errors = control.errors;
+    for (const key of Object.keys(errors)) {
+      switch (key) {
+        case 'required':
+          return 'Este campo es requerido.';
+        case 'minlength':
+          return `Mínimo ${errors['minlength'].requiredLength} caracteres.`;
+        case 'maxlength':
+          return `Máximo ${errors['maxlength'].requiredLength} caracteres.`;
+        case 'pattern':
+          return 'Formato inválido. Solo letras, números, espacios y guiones.';
+      }
+    }
+    return 'Error desconocido';
   }
 }

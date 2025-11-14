@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { debounceTime, distinctUntilChanged, tap } from 'rxjs/operators';
+import Swal, { SweetAlertResult } from 'sweetalert2';
 
 import { VehiculoService } from '../../services/vehiculo.service';
 import { VehiculoDto, VehiculoCreateDto } from '../../interfaces/vehiculo.interface';
@@ -32,8 +33,6 @@ export default class VehiculoComponent implements OnInit, OnDestroy {
   public currentVehiculoId: number | null = null;
 
   private searchSubscription?: Subscription;
-
-  public vehiculoParaEliminarId: number | null = null;
 
   constructor() {
     this.searchForm = this.fb.group({
@@ -118,9 +117,11 @@ export default class VehiculoComponent implements OnInit, OnDestroy {
             this.cargarVehiculos(this.paginatedResponse()?.paginaActual || 1);
             (document.getElementById('vehiculo_modal') as HTMLDialogElement)?.close();
             this.vehiculoForm.reset();
+            Swal.fire('Actualizado', 'El vehículo ha sido actualizado.', 'success');
           },
           error: (err) => {
             console.error('Error al actualizar', err);
+            Swal.fire('Error', `Hubo un error al actualizar el vehículo: ${err.error?.mensaje || err.message}`, 'error');
           }
         });
     } else {
@@ -130,33 +131,38 @@ export default class VehiculoComponent implements OnInit, OnDestroy {
             this.cargarVehiculos();
             (document.getElementById('vehiculo_modal') as HTMLDialogElement)?.close();
             this.vehiculoForm.reset();
+            Swal.fire('Creado', 'El vehículo ha sido creado.', 'success');
           },
           error: (err) => {
             console.error('Error al crear', err);
+            Swal.fire('Error', `Hubo un error al crear el vehículo: ${err.error?.mensaje || err.message}`, 'error');
           }
         });
     }
   }
 
-  prepararEliminacion(id: number): void {
-    this.vehiculoParaEliminarId = id;
-    (document.getElementById('delete_vehiculo_modal') as HTMLDialogElement)?.showModal();
-  }
-
-  confirmarEliminacion(): void {
-    if (!this.vehiculoParaEliminarId) return;
-
-    this.vehiculoService.delete(this.vehiculoParaEliminarId).subscribe({
-      next: () => {
-        this.cargarVehiculos(this.paginatedResponse()?.paginaActual || 1);
-        (document.getElementById('delete_vehiculo_modal') as HTMLDialogElement)?.close();
-      },
-      error: (err) => {
-        console.error('Error al eliminar', err);
-        (document.getElementById('delete_vehiculo_modal') as HTMLDialogElement)?.close();
-      },
-      complete: () => {
-        this.vehiculoParaEliminarId = null;
+  eliminar(id: number): void {
+    Swal.fire({
+      title: '¿Estás seguro?',
+      text: 'No podrás revertir esto!',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Sí, eliminar!',
+      cancelButtonText: 'Cancelar'
+    }).then((result: SweetAlertResult) => {
+      if (result.isConfirmed) {
+        this.vehiculoService.delete(id).subscribe({
+          next: () => {
+            this.cargarVehiculos(this.paginatedResponse()?.paginaActual || 1);
+            Swal.fire('Eliminado', 'El vehículo ha sido eliminado.', 'success');
+          },
+          error: (err) => {
+            console.error('Error al eliminar', err);
+            Swal.fire('Error', `Hubo un error al eliminar el vehículo: ${err.error?.mensaje || err.message}`, 'error');
+          }
+        });
       }
     });
   }

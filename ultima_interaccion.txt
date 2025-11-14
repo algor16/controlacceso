@@ -206,7 +206,7 @@ El flujo principal del "Registro Inteligente" está implementado y funcional. El
 
 2.  **Mejoras en el Módulo de "Registro Inteligente" (Frontend):**
     *   **Problema 1:** Al buscar un visitante, la información de las acciones sugeridas no se mostraba en la interfaz hasta que el usuario interactuaba con la página (un problema de detección de cambios).
-    *   **Solución 1:** Se inyectó `ChangeDetectorRef` en `registros.component.ts` y se llamó a `detectChanges()` manualmente después de recibir la respuesta de la API, forzando la actualización inmediata de la vista.
+    *   **Solución 1:** Se inyectó `ChangeDetectorRef` en `registros.component.ts` y se llamó a `detectChanges()` manually después de recibir la respuesta de la API, forzando la actualización inmediata de la vista.
     *   **Problema 2:** El componente solo mostraba las acciones exactas que sugería la API, limitando al guardia de seguridad.
     *   **Solución 2:** Se modificó la lógica para que, al recibir una sugerencia, siempre se muestren las dos opciones principales: **"Registrar INGRESO"** y **"Registrar SALIDA"**. La acción recomendada por la API ahora viene preseleccionada, pero el guardia tiene la flexibilidad de elegir la otra opción antes de registrar la acción.
 
@@ -288,25 +288,55 @@ El flujo principal del "Registro Inteligente" está implementado y funcional. El
     *   **Problema de Diagnóstico:** Se invirtió un tiempo considerable en depurar por qué los cambios no se reflejaban, descubriendo finalmente que se estaba ejecutando una copia incorrecta del proyecto de backend. Este hallazgo fue crucial para poder aplicar las correcciones en el lugar correcto.
 
 **Resumen General:** Se ha solucionado un bug complejo y engañoso, y en el proceso, se ha mejorado significativamente la robustez y mantenibilidad del código al eliminar la dependencia de IDs fijos. La interfaz de usuario ahora se comporta como se espera y la base del código es más estable.
-### Reporte de Interacción: Mejoras de UX y Lógica de Negocio en "Registro Inteligente" (30/10/2025)
+### Reporte de Interacción: Creación e Integración del Catálogo `TipoVisitante` (12/11/2025)
 
-**Objetivo:** Aumentar la seguridad y mejorar la experiencia de usuario (UX) del personal de seguridad en el módulo de "Registro Inteligente", asegurando que la información presentada sea clara, contextual y que las reglas de negocio (como el estado del visitante) se apliquen correctamente.
+**Objetivo:** Añadir una nueva entidad `TipoVisitante` al sistema para clasificar a los visitantes (ej: "Empleado", "Contratista", "Proveedor") y conectarla de forma opcional al CRUD de `Visitantes`, además de gestionar el control de versiones de ambos proyectos.
 
-1.  **Verificación de Estado del Visitante (Full-Stack):**
-    *   **Problema:** El sistema permitía iniciar un registro de acceso incluso si el visitante estaba "Bloqueado" o "Suspendido".
+1.  **Creación del Catálogo `TipoVisitante` (Full-Stack):**
+    *   **Backend (.NET API):**
+        *   Se creó el nuevo modelo `TipoVisitante` y se añadió una relación opcional al modelo `Visitante`.
+        *   Se generó la migración de base de datos y se actualizó el esquema.
+        *   Se implementó el `TiposVisitanteController` con todos los métodos CRUD, siguiendo el patrón de `RepositorioGenerico`, DTOs y `AutoMapper`.
+        *   Se corrigió un error 500 al crear un `TipoVisitante` por una configuración de `AutoMapper` faltante.
+    *   **Frontend (Angular):**
+        *   Se creó el componente `TiposVisitanteComponent` de forma modular, reutilizando el `CatalogoCrudComponent` genérico existente.
+        *   Se añadió la ruta `/catalogos/tipos-visitante` y se agregó el enlace correspondiente en el menú lateral.
+
+2.  **Integración en el Módulo de `Visitantes` (Full-Stack):**
+    *   **Problema:** La nueva clasificación `TipoVisitante` debía poder asignarse al crear o editar un `Visitante`.
     *   **Solución:**
-        *   **Backend:** Se enriqueció la respuesta de la API (`GET /api/Registros/sugerencia`) para que siempre incluya el estado actual del visitante (ej: "Normal", "Bloqueado").
-        *   **Frontend:** La interfaz de registro ahora muestra de forma prominente el estado del visitante con un `alert` de color (verde para "Normal", rojo para "Bloqueado", etc.). Crucialmente, el formulario para registrar la entrada o salida **solo se habilita si el estado del visitante es "Normal"**, previniendo accesos indebidos.
+        *   **Backend:** Se actualizaron los DTOs (`VisitanteDto`, `VisitanteCreateDto`) y el perfil de `AutoMapper` para incluir `tipoVisitanteId` y la descripción textual de `TipoVisitante`.
+        *   **Frontend (Formulario):** Se añadió un menú desplegable (opcional) en el formulario de `Visitantes` para seleccionar el tipo. Se reorganizaron los campos para una mejor UX.
+        *   **Frontend (Tabla):** Se agregó una nueva columna en la tabla de `Visitantes` para mostrar el `TipoVisitante` asignado, mostrando "N/A" si no tiene uno.
+    *   **Depuración y Robustez:**
+        *   Se solucionó un error en el modo edición (`NG01002: Must supply a value`) cambiando el método `setValue` por `patchValue` en el formulario, para manejar correctamente los campos opcionales que pueden ser nulos.
+        *   Se corrigió un bug donde la columna "Tipo Visitante" no se actualizaba en la tabla. La causa raíz estaba en el `VisitanteRepositorio` del backend, que no incluía la entidad `TipoVisitante` en la consulta. Se añadió el correspondiente `.Include()` para solucionarlo.
 
-2.  **Mejora de Mensajes de Estado (Full-Stack):**
-    *   **Problema:** Los mensajes mostrados al guardia eran genéricos y no reflejaban la información específica del estado de la solicitud (ej: "Activa", "Autorizada").
-    *   **Solución:** Se refactorizó la lógica en `RegistrosController`. Ahora, el mensaje mostrado se extrae directamente del campo `mensaje` del `EstadoSolicitud` correspondiente, tanto para sugerencias de entrada como de salida. Esto proporciona al personal instrucciones mucho más precisas y contextuales.
+3.  **Gestión de Repositorios y Control de Versiones:**
+    *   **Proyecto Angular:** Se subieron todos los cambios al repositorio de GitHub con el mensaje de commit solicitado.
+    *   **Proyecto API:** Se inicializó un nuevo repositorio de Git, se configuró el repositorio remoto `ApiControlAcceso` proporcionado y se subió el proyecto completo por primera vez.
 
-3.  **Modernización de la Interfaz y Notificaciones (Frontend):**
-    *   **Refactorización de Plantilla:** Se actualizó toda la plantilla de `registros.component.html` para usar la nueva sintaxis de control de flujo de Angular (`@if`, `@else`, `@switch`), eliminando las directivas `*ngIf` y mejorando la legibilidad del código.
-    *   **Notificaciones "Toast":** Se reemplazó el `alert()` nativo del navegador por notificaciones tipo "toast" (de DaisyUI) que desaparecen automáticamente. Esto confirma el éxito de un registro sin interrumpir el flujo de trabajo del usuario.
+**Resumen General:** Se ha completado con éxito el ciclo de vida de una nueva funcionalidad, desde la creación del modelo de datos hasta su integración completa en la interfaz de usuario. Se han solucionado errores clave en el proceso, mejorado la robustez del código y gestionado el versionado de ambos proyectos en sus respectivos repositorios de GitHub.
 
-4.  **Corrección de Errores de Compilación:**
-    *   Se solucionaron múltiples errores de sintaxis en la plantilla (`NG5002: Unexpected closing block`) que surgieron durante la refactorización, restaurando la compilación del proyecto.
+---
+### Instrucciones para Futuros Commits
 
-**Resumen General:** El módulo de "Registro Inteligente" es ahora más seguro, informativo y moderno. Impide activamente el registro de visitantes no autorizados, comunica el estado del sistema de forma más clara y proporciona una experiencia de usuario más fluida y profesional para el personal de seguridad.
+**Repositorio Frontend (Angular):**
+- **URL:** `https://github.com/algor16/controlacceso.git`
+- **Directorio:** `Angular/ControlAcceso`
+- **Comandos:**
+  ```bash
+  git add .
+  git commit -m "Tu mensaje descriptivo aquí"
+  git push
+  ```
+
+**Repositorio Backend (API):**
+- **URL:** `https://github.com/algor16/ApiControlAcceso.git`
+- **Directorio:** `ApiRest/ControlAcceso/ControlAcceso`
+- **Comandos:**
+  ```bash
+  git add .
+  git commit -m "Tu mensaje descriptivo aquí"
+  git push
+  ```

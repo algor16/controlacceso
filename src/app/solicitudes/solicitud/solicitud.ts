@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { AbstractControl, AsyncValidatorFn, FormBuilder, FormGroup, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { Observable, Subscription, of } from 'rxjs';
 import { debounceTime, distinctUntilChanged, tap, map, catchError } from 'rxjs/operators';
+import Swal, { SweetAlertResult } from 'sweetalert2';
 
 import { SolicitudesService } from '../../services/solicitudes.service';
 import { SolicitudDto, SolicitudCreateDto } from '../../interfaces/solicitud.interface';
@@ -13,8 +14,6 @@ import { VisitantesService } from '../../services/visitantes';
 import { VehiculoService } from '../../services/vehiculo.service';
 import { Visitante } from '../../interfaces/visitante.interface';
 import { VehiculoDto } from '../../interfaces/vehiculo.interface';
-
-type AlertStatus = 'success' | 'error' | 'info' | 'warning';
 
 @Component({
   selector: 'app-solicitud',
@@ -45,11 +44,6 @@ export default class SolicitudComponent implements OnInit, OnDestroy {
 
   private searchSubscription?: Subscription;
 
-  public showAlert = signal(false);
-  public alertMessage = signal('');
-  public alertStatus = signal<AlertStatus>('info');
-
-  public solicitudParaEliminarId: number | null = null;
   public minSalidaDate = '';
 
   constructor() {
@@ -223,6 +217,7 @@ export default class SolicitudComponent implements OnInit, OnDestroy {
       },
       error: (err) => {
         console.error("Error al obtener los datos de la solicitud para editar:", err);
+        Swal.fire('Error', `Error al obtener los datos de la solicitud: ${err.message}`, 'error');
       }
     });
   }
@@ -242,12 +237,12 @@ export default class SolicitudComponent implements OnInit, OnDestroy {
 
     if (this.solicitudForm.invalid) {
       if (this.solicitudForm.hasError('fechaSalidaInvalida')) {
-        this.mostrarAlerta('La fecha de salida debe ser al menos una hora posterior a la fecha de ingreso.', 'error');
+        Swal.fire('Error de Validación', 'La fecha de salida debe ser al menos una hora posterior a la fecha de ingreso.', 'error');
         document.getElementById('f_Salida_input')?.focus();
       } else if (this.solicitudForm.hasError('superposicion')) {
-        this.mostrarAlerta('El visitante ya tiene una solicitud para este rango de fechas.', 'error');
+        Swal.fire('Error de Validación', 'El visitante ya tiene una solicitud para este rango de fechas.', 'error');
       } else {
-        this.mostrarAlerta('Por favor, complete todos los campos requeridos.', 'warning');
+        Swal.fire('Error de Validación', 'Por favor, complete todos los campos requeridos.', 'warning');
       }
       return;
     }
@@ -263,61 +258,53 @@ export default class SolicitudComponent implements OnInit, OnDestroy {
       this.solicitudesService.update(this.currentSolicitudId!, solicitudData)
         .subscribe({
           next: () => {
-            this.mostrarAlerta('Solicitud actualizada correctamente.', 'success');
+            Swal.fire('Actualizada', 'Solicitud actualizada correctamente.', 'success');
             this.cargarSolicitudes(this.paginatedResponse()?.paginaActual || 1);
             (document.getElementById('solicitud_modal') as HTMLDialogElement)?.close();
             this.solicitudForm.reset();
           },
           error: (err) => {
-            this.mostrarAlerta(`Error al actualizar: ${err.message}`, 'error');
+            Swal.fire('Error', `Error al actualizar: ${err.message}`, 'error');
           }
         });
     } else {
       this.solicitudesService.create(solicitudData)
         .subscribe({
           next: () => {
-            this.mostrarAlerta('Solicitud creada correctamente.', 'success');
+            Swal.fire('Creada', 'Solicitud creada correctamente.', 'success');
             this.cargarSolicitudes();
             (document.getElementById('solicitud_modal') as HTMLDialogElement)?.close();
             this.solicitudForm.reset();
           },
           error: (err) => {
-            this.mostrarAlerta(`Error al crear: ${err.message}`, 'error');
+            Swal.fire('Error', `Error al crear: ${err.message}`, 'error');
           }
         });
     }
   }
 
-  prepararEliminacion(id: number): void {
-    this.solicitudParaEliminarId = id;
-    (document.getElementById('delete_solicitud_modal') as HTMLDialogElement)?.showModal();
-  }
-
-  confirmarEliminacion(): void {
-    if (!this.solicitudParaEliminarId) return;
-
-    this.solicitudesService.delete(this.solicitudParaEliminarId).subscribe({
-      next: () => {
-        this.mostrarAlerta('Solicitud eliminada correctamente.', 'warning');
-        this.cargarSolicitudes(this.paginatedResponse()?.paginaActual || 1);
-        (document.getElementById('delete_solicitud_modal') as HTMLDialogElement)?.close();
-      },
-      error: (err) => {
-        this.mostrarAlerta(`Error al eliminar la solicitud: ${err.message}`, 'error');
-      },
-      complete: () => {
-        this.solicitudParaEliminarId = null;
+  eliminar(id: number): void {
+    Swal.fire({
+      title: '¿Estás seguro?',
+      text: 'La solicitud será anulada y no se podrá revertir.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Sí, anular!',
+      cancelButtonText: 'Cancelar'
+    }).then((result: SweetAlertResult) => {
+      if (result.isConfirmed) {
+        this.solicitudesService.delete(id).subscribe({
+          next: () => {
+            Swal.fire('Anulada', 'La solicitud ha sido anulada.', 'success');
+            this.cargarSolicitudes(this.paginatedResponse()?.paginaActual || 1);
+          },
+          error: (err) => {
+            Swal.fire('Error', `Error al anular la solicitud: ${err.message}`, 'error');
+          }
+        });
       }
     });
-  }
-
-  mostrarAlerta(mensaje: string, status: AlertStatus): void {
-    this.alertMessage.set(mensaje);
-    this.alertStatus.set(status);
-    this.showAlert.set(true);
-
-    setTimeout(() => {
-      this.showAlert.set(false);
-    }, 5000);
   }
 }

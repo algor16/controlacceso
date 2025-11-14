@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { AbstractControl, AsyncValidatorFn, FormBuilder, FormGroup, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { Observable, Subject, Subscription, of } from 'rxjs';
 import { debounceTime, distinctUntilChanged, switchMap, map, catchError, tap } from 'rxjs/operators';
+import Swal, { SweetAlertResult } from 'sweetalert2';
 
 import { VisitantesService } from '../../services/visitantes'; // Ajusta la ruta si es necesario
 import { UpsertVisitante, Visitante } from '../../interfaces/visitante.interface';
@@ -10,8 +11,6 @@ import { PaginatedResponse } from '../../interfaces/paginated-response.interface
 import { CatalogosService } from '../../services/catalogos.service';
 import { CatalogoItem } from '../../interfaces/catalogo.interface';
 import { HttpErrorResponse } from '@angular/common/http';
-
-type AlertStatus = 'success' | 'error' | 'info' | 'warning';
 
 @Component({
   selector: 'app-visitante',
@@ -45,12 +44,6 @@ export default class VisitanteComponent implements OnInit, OnDestroy {
   // --- Lógica para Búsqueda con Retraso (debounce) ---
   private searchTerms = new Subject<void>();
   private searchSubscription?: Subscription;
-
-  public showAlert = signal(false);
-  public alertMessage = signal('');
-  public alertStatus = signal<AlertStatus>('info');
-
-  public visitanteParaEliminarId: number | null = null;
 
   constructor() {
     this.searchForm = this.fb.group({
@@ -164,7 +157,7 @@ export default class VisitanteComponent implements OnInit, OnDestroy {
         (document.getElementById('visitante_modal') as HTMLDialogElement)?.showModal();
       },
       error: (err) => {
-        this.mostrarAlerta(`Error al cargar visitante: ${err.message}`, 'error');
+        Swal.fire('Error', `Error al cargar visitante: ${err.message}`, 'error');
       }
     });
   }
@@ -180,7 +173,7 @@ export default class VisitanteComponent implements OnInit, OnDestroy {
     if (this.isEditMode()) {
       this.visitantesService.update(this.currentVisitorId!, visitanteData).subscribe({
         next: () => {
-          this.mostrarAlerta('Visitante actualizado correctamente.', 'success');
+          Swal.fire('Actualizado', 'Visitante actualizado correctamente.', 'success');
           this.cargarVisitantes(this.paginatedResponse()?.paginaActual || 1);
           (document.getElementById('visitante_modal') as HTMLDialogElement)?.close();
           this.visitanteForm.reset();
@@ -188,16 +181,16 @@ export default class VisitanteComponent implements OnInit, OnDestroy {
         error: (err: HttpErrorResponse) => {
           if (err.status === 409) {
             this.visitanteForm.get('numero')?.setErrors({ documentoExistente: true });
-            this.mostrarAlerta('El número de documento ya pertenece a otro visitante.', 'error');
+            Swal.fire('Error', 'El número de documento ya pertenece a otro visitante.', 'error');
           } else {
-            this.mostrarAlerta(`Error al actualizar: ${err.error?.mensaje || err.message}`, 'error');
+            Swal.fire('Error', `Error al actualizar: ${err.error?.mensaje || err.message}`, 'error');
           }
         }
       });
     } else {
       this.visitantesService.create(visitanteData).subscribe({
         next: () => {
-          this.mostrarAlerta('Visitante creado correctamente.', 'success');
+          Swal.fire('Creado', 'Visitante creado correctamente.', 'success');
           this.cargarVisitantes(1); // Volver a la página 1 para ver el nuevo registro
           (document.getElementById('visitante_modal') as HTMLDialogElement)?.close();
           this.visitanteForm.reset();
@@ -205,42 +198,36 @@ export default class VisitanteComponent implements OnInit, OnDestroy {
         error: (err: HttpErrorResponse) => {
           if (err.status === 409) {
             this.visitanteForm.get('numero')?.setErrors({ documentoExistente: true });
-            this.mostrarAlerta('El número de documento ya está registrado.', 'error');
+            Swal.fire('Error', 'El número de documento ya está registrado.', 'error');
           } else {
-            this.mostrarAlerta(`Error al crear: ${err.error?.mensaje || err.message}`, 'error');
+            Swal.fire('Error', `Error al crear: ${err.error?.mensaje || err.message}`, 'error');
           }
         }
       });
     }
   }
 
-  mostrarAlerta(mensaje: string, status: AlertStatus): void {
-    this.alertMessage.set(mensaje);
-    this.alertStatus.set(status);
-    this.showAlert.set(true);
-    setTimeout(() => {
-      this.showAlert.set(false);
-    }, 5000);
-  }
-
-  prepararEliminacion(id: number): void {
-    this.visitanteParaEliminarId = id;
-    (document.getElementById('delete_visitor_modal') as HTMLDialogElement)?.showModal();
-  }
-
-  confirmarEliminacion(): void {
-    if (!this.visitanteParaEliminarId) return;
-
-    this.visitantesService.delete(this.visitanteParaEliminarId).subscribe({
-      next: () => {
-        this.mostrarAlerta('Visitante eliminado correctamente.', 'warning');
-        this.cargarVisitantes(this.paginatedResponse()?.paginaActual || 1);
-      },
-      error: (err) => {
-        this.mostrarAlerta(`Error al eliminar el visitante: ${err.message}`, 'error');
-      },
-      complete: () => {
-        this.visitanteParaEliminarId = null;
+  eliminar(id: number): void {
+    Swal.fire({
+      title: '¿Estás seguro?',
+      text: 'No podrás revertir esto!',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Sí, eliminar!',
+      cancelButtonText: 'Cancelar'
+    }).then((result: SweetAlertResult) => {
+      if (result.isConfirmed) {
+        this.visitantesService.delete(id).subscribe({
+          next: () => {
+            Swal.fire('Eliminado', 'El visitante ha sido eliminado.', 'success');
+            this.cargarVisitantes(this.paginatedResponse()?.paginaActual || 1);
+          },
+          error: (err) => {
+            Swal.fire('Error', `Error al eliminar el visitante: ${err.message}`, 'error');
+          }
+        });
       }
     });
   }

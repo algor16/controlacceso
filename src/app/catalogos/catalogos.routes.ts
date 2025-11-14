@@ -46,6 +46,10 @@ export const catalogosRoutes: Routes = [
     title: 'Roles',
     loadComponent: ()=> import('./roles/roles.component'),
    },
+  { path: 'motivos',
+    title: 'Motivos',
+    loadComponent: ()=> import('./motivos/motivos.component'),
+   },
 
   { path: '',
     redirectTo: 'clases-vehiculos',
